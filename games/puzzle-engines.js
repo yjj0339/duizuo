@@ -123,7 +123,10 @@ const QUESTIONS = [
   ['英语单词 library 通常表示？', ['图书馆', '机场', '医院', '厨房'], 0, 'Library 通常指图书馆。'],
   ['奥运会五环图案共有几个圆环？', ['5 个', '4 个', '6 个', '7 个'], 0, '奥运五环图案由五个相扣的圆环组成。']
 ];
-function quizReveal(s, now) { s.phase = 'reveal'; s.phaseEndsAt = now + 1800; s.message = '答案揭晓，下一题即将开始。'; }
+function quizReveal(s, now) {
+  for (let player = 0; player < 2; player++) if (s.choices[player] === s._questions[s.round].correct) s.scores[player] += 100;
+  s.phase = 'reveal'; s.phaseEndsAt = now + 1800; s.message = '答案揭晓，下一题即将开始。';
+}
 const quiz = {
   create(seed, now) {
     const rng = { _rng: seed >>> 0 || 1 };
@@ -138,13 +141,12 @@ const quiz = {
     this.tick(s, 0, now);
     if (s.status !== 'playing' || s.phase !== 'answer' || a.round !== s.round || s.choices[player] !== null) return false;
     s.choices[player] = a.choice;
-    if (a.choice === s._questions[s.round].correct) s.scores[player] += 100;
     if (s.choices.every(c => c !== null)) quizReveal(s, now);
     return true;
   },
   tick(s, dt, now) {
     if (!clock(s, now)) return;
-    if (now >= s.endsAt) { finish(s, '知识擂台结束，按答对题数结算。'); return; }
+    if (now >= s.endsAt) { if (s.phase === 'answer') quizReveal(s, now); finish(s, '知识擂台结束，按答对题数结算。'); return; }
     while (s.status === 'playing' && now >= s.phaseEndsAt) {
       const boundary = s.phaseEndsAt;
       if (s.phase === 'answer') quizReveal(s, boundary);

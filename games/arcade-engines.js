@@ -263,7 +263,7 @@ const maze = {
   create(seed, now) {
     const grid = Array.from({ length: 13 }, (_, y) => Array.from({ length: 17 }, (_, x) => x === 0 || x === 16 || y === 0 || y === 12 ? 1 : 0));
     for (const y of [2, 4, 8, 10]) for (let x = 2; x <= 14; x++) if (![4, 8, 12].includes(x)) grid[y][x] = 1;
-    for (const x of [4, 12]) for (const y of [5, 7]) grid[y][x] = 1;
+    for (const x of [4, 12]) for (const y of [5, 6, 7]) grid[y][x] = 1;
     return { ...base('maze', seed, now, 150), cols: 17, rows: 13, grid, bases: mazeBases.map(b => ({ ...b })), players: mazeBases.map(b => ({ ...b, nextMove: now })), flag: { x: 8, y: 6, carrier: null }, message: '夺取中央金旗并带回自己的圆形基地，先夺 3 旗获胜；碰到持旗者可截旗' };
   },
   action(s, p, a, now) {

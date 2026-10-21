@@ -50,7 +50,7 @@ function ui(root, send, context, id, rules, scoreLabel) {
 }
 function toolbar(...nodes) { const node = element('div', 'game-toolbar board-toolbar'); node.append(...nodes); return node; }
 function coord(index, size) { return `${String.fromCharCode(65 + index % size)}${Math.floor(index / size) + 1}`; }
-function grid(api, count, cols, name, onSelect) {
+function grid(api, count, cols, name, onSelect, onActivate) {
   const node = element('div', 'game-grid board-grid'); node.style.setProperty('--board-cols', cols);
   node.setAttribute('role', 'grid'); node.setAttribute('aria-label', name);
   const buttons = [];
@@ -65,7 +65,7 @@ function grid(api, count, cols, name, onSelect) {
   for (let i = 0; i < count; i++) {
     const b = element('button', 'game-cell board-cell'); b.type = 'button'; b.tabIndex = i === 0 ? 0 : -1;
     b.setAttribute('role', 'gridcell'); b.setAttribute('aria-label', coord(i, cols));
-    api.listen(b, 'click', () => { select(i); });
+    api.listen(b, 'click', () => { select(i); onActivate?.(i); });
     api.listen(b, 'focus', () => { if (selected !== i) select(i); });
     api.listen(b, 'keydown', e => {
       let next = selected;
@@ -201,18 +201,11 @@ function mountDots(root, send, context) {
 
 function mountMemory(root, send, context) {
   const a = ui(root, send, context, 'memory', '24 张卡牌组成 12 对。轮到你时翻两张，相同得 1 分并继续翻，不同会展示 1.4 秒后换人。已配对的牌保留在桌面。每回合 30 秒，超时落败。点击翻牌，方向键选牌，Enter 或空格翻开。', '对卡牌');
-  const board = grid(a, 24, 6, '24 张记忆牌', index => {
+  const board = grid(a, 24, 4, '24 张记忆牌', null, index => {
     const v = a.view;
     if (v && v.status === 'playing' && v.turn === a.p && v.phase === 'choose' && v.faces[index] === null) a.send({ type: 'flip', index });
   });
-  // Selecting with arrows must not reveal cards. Only a click/activation flips.
-  // Replace the selection callback with explicit activation by capturing input.
-  // The local flag distinguishes a board focus move from a card press.
   a.body.append(board.node); board.node.classList.add('board-memory-grid');
-  const flipSelected = () => {
-    const v = a.view, index = board.selected;
-    if (v && v.turn === a.p && v.phase === 'choose' && v.faces[index] === null) a.send({ type: 'flip', index });
-  };
   // grid's normal button activation already supplies click for Enter/Space.
   return { update(v) {
     a.update(v);

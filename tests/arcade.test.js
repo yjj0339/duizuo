@@ -173,3 +173,45 @@ test('maze: touching a flag carrier drops the flag and resets the encounter', ()
   assert.equal(s.flag.carrier, null); assert.equal(s.flag.x, 8);
   assert.equal(s.players[1].x, 15);
 });
+
+test('maze: central lane has real detours rather than a straight sprint to the flag', () => {
+  const g = engine('maze'), s = g.create(1, 0);
+  s.players[0] = { x: 3, y: 6, nextMove: 0 };
+  assert.equal(g.action(s, 0, { type: 'move', dir: 'right' }, 1), false);
+});
+
+test('bomber: a player may leave a planted bomb but cannot step back onto it', () => {
+  const g = engine('bomber'), s = g.create(1, 0);
+  g.action(s, 0, { type: 'bomb' }, 1);
+  assert.equal(g.action(s, 0, { type: 'move', dir: 'right' }, 2), true);
+  assert.equal(g.action(s, 0, { type: 'move', dir: 'left' }, 200), false);
+});
+
+test('tanks: stale movement input expires so a disconnected player cannot keep driving', () => {
+  const g = engine('tanks'), s = g.create(1, 0);
+  g.action(s, 0, { type: 'control', dx: 0, dy: 1 }, 1);
+  g.tick(s, .1, 100); const y = s.tanks[0].y;
+  g.tick(s, .1, 500); assert.equal(s.tanks[0].y, y);
+});
+
+test('all arcade engines: invalid numeric inputs and invalid ticks never poison snapshots', () => {
+  for (const id of ids) {
+    const g = engine(id), s = g.create(8, 0);
+    for (const n of [NaN, Infinity, -Infinity, 1e20, -1e20]) {
+      for (const action of [{ type: 'move', x: n, y: 10 }, { type: 'aim', x: 10, y: n }, { type: 'control', dx: n, dy: 0 }, { type: 'shoot', angle: 45, power: n }]) assert.equal(g.action(s, 0, action, 1), false);
+    }
+    for (const dt of [NaN, Infinity, -3]) g.tick(s, dt, 100);
+    const walk = item => {
+      if (typeof item === 'number') assert.ok(Number.isFinite(item), `${id}: all state numbers must be finite`);
+      else if (item && typeof item === 'object') Object.values(item).forEach(walk);
+    };
+    walk(g.view(s, 0));
+  }
+});
+
+test('all arcade engines: timeout awards the higher authoritative score', () => {
+  for (const id of ids) {
+    const g = engine(id), s = g.create(9, 0); s.scores = [1, 2];
+    g.tick(s, .01, s.endsAt); assert.equal(s.winner, 1, id);
+  }
+});

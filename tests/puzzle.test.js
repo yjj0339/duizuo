@@ -227,6 +227,7 @@ class TestElement extends EventTarget {
     this.classList = { add: (...names) => { this.className += ` ${names.join(' ')}`; }, remove() {}, toggle() {} };
   }
   append(...nodes) { this.children.push(...nodes); }
+  prepend(...nodes) { this.children.unshift(...nodes); }
   replaceChildren(...nodes) { this.children = nodes; this.replacements++; }
   setAttribute(key, value) { this.attributes[key] = String(value); }
   removeAttribute(key) { delete this.attributes[key]; }
@@ -270,4 +271,84 @@ test('typing renderer preserves active IME composition and sends only composed i
   input.dispatchEvent(new Event('input'));
   assert.equal(sent.length, 1);
   renderer.destroy();
+});
+
+test('quiz: answer correctness is not leaked through scores before both players answer', () => {
+  const engine = game('quiz'), state = start('quiz');
+  engine.action(state, 0, { type: 'answer', round: 0, choice: state._questions[0].correct }, 1001);
+  assert.deepEqual(engine.view(state, 1).scores, [0, 0]);
+  engine.tick(state, 12, state.phaseEndsAt);
+  assert.equal(state.scores[0], 100);
+});
+
+test('2048 renderer: player two sees their own board first', () => {
+  const { root, doc } = fixture(), engine = game('g2048'), state = start('g2048');
+  const renderer = renderers.g2048(root, () => {}, { player: 1, feedback() {} });
+  renderer.update(engine.view(state, 1));
+  const race = doc.nodes.find(node => node.className.includes('puzzle-2048-race'));
+  assert.match(race.children[0].className, /puzzle-own/);
+  renderer.destroy();
+});
+
+test('quiz: eight answered rounds reach a real winner without relying on overall timeout', () => {
+  const engine = game('quiz'), state = start('quiz');
+  let now = 1000;
+  for (let round = 0; round < 8; round++) {
+    const correct = state._questions[round].correct;
+    engine.action(state, 0, { type: 'answer', round, choice: correct }, ++now);
+    engine.action(state, 1, { type: 'answer', round, choice: (correct + 1) % 4 }, ++now);
+    now = state.phaseEndsAt; engine.tick(state, 2, now);
+  }
+  assert.equal(state.status, 'finished'); assert.equal(state.winner, 0); assert.deepEqual(state.scores, [800, 0]);
+});
+
+test('reaction: five rounds of real taps finish and no absent player can stall', () => {
+  const engine = game('reaction'), state = start('reaction');
+  for (let round = 0; round < 5; round++) {
+    const signal = state._signalAt;
+    engine.action(state, 0, { type: 'tap', round }, signal + 100);
+    // Player 1 never responds: the server advances after the response window.
+    engine.tick(state, 4, state.phaseEndsAt);
+    engine.tick(state, 2, state.phaseEndsAt);
+  }
+  assert.equal(state.status, 'finished'); assert.equal(state.winner, 0); assert.equal(state.scores[0], 4500);
+});
+
+test('simon: all eight rounds can be completed with a growing sequence and a real winner', () => {
+  const engine = game('simon'), state = start('simon');
+  for (let round = 0; round < 8; round++) {
+    engine.tick(state, 20, state.phaseEndsAt);
+    let now = state._now;
+    for (const note of state._sequence) engine.action(state, 0, { type: 'note', round, note }, ++now);
+    engine.action(state, 1, { type: 'note', round, note: (state._sequence[0] + 1) % 4 }, ++now);
+    engine.tick(state, 2, state.phaseEndsAt);
+  }
+  assert.equal(state.status, 'finished'); assert.equal(state.winner, 0); assert.equal(state.scores[0], 760);
+});
+
+test('tetris: server gravity is frame-rate independent and wall movement remains legal', () => {
+  const engine = game('tetris'), a = start('tetris'), b = start('tetris');
+  engine.tick(a, 6.5, 7500);
+  for (let now = 1650; now <= 7500; now += 650) engine.tick(b, 0.65, now);
+  assert.deepEqual(a.players, b.players);
+  for (let i = 0; i < 20; i++) engine.action(a, 0, { type: 'move', direction: 'left' }, 7501 + i);
+  assert.ok(engine.view(a, 0).players[0].activeCells.every(([x]) => x >= 0 && x < 10));
+});
+
+test('sudoku: several random transforms retain the unique solution', () => {
+  for (const seed of [1, 7, 42, 999, 4294967295]) assert.equal(solutionCount(game('sudoku').create(seed, 1000).givens), 1);
+});
+
+test('all public views are detached copies and contain no private random state', () => {
+  for (const id of ids) {
+    const engine = game(id), state = start(id), before = JSON.stringify(state), view = engine.view(state, 0);
+    const walk = value => {
+      if (!value || typeof value !== 'object') return;
+      for (const key of Object.keys(value)) { assert.ok(!key.startsWith('_'), `${id} leaked ${key}`); walk(value[key]); }
+    };
+    walk(view); view.scores[0] = 99999;
+    if (view.players?.[0]?.cells) view.players[0].cells[0] = 99999;
+    if (view.players?.[0]?.board) view.players[0].board[0] = 99999;
+    assert.equal(JSON.stringify(state), before);
+  }
 });

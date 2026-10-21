@@ -39,7 +39,7 @@ export async function createApp({dataDir=path.join(ROOT,'runtime','data'),persis
   return {server,io,rooms,listen(port=4380,host='127.0.0.1'){return new Promise(resolve=>server.listen(port,host,()=>resolve(server.address())));},async close(){clearInterval(timer);await new Promise(resolve=>io.close(resolve));db?.close();}};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  const app=await createApp();const port=Number(process.env.PORT||4380);if(!Number.isInteger(port)||port<1||port>65535)throw new Error('Invalid PORT');
+  const app=await createApp();const port=Number(process.env.PORT||4387);if(!Number.isInteger(port)||port<1||port>65535)throw new Error('Invalid PORT');
   await app.listen(port);console.log(`DUO PLAY ready: http://127.0.0.1:${port}`);
   const stop=async()=>{await app.close();process.exit(0);};process.on('SIGINT',stop);process.on('SIGTERM',stop);
 }

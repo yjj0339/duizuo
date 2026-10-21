@@ -223,3 +223,84 @@ test('mines: server timer ends an idle match in a draw', () => {
   const g = game('mines'), s = g.create(2, 1000);
   g.tick(s, 181, s.endsAt + 1); assert.equal(s.status, 'finished'); assert.equal(s.winner, -1);
 });
+
+test('all board games reject fractional, negative and oversized target indices', () => {
+  const actions = { gomoku: 'place', fleet: 'fire', dots: 'line', memory: 'flip', reversi: 'place', mines: 'open' };
+  for (const [id, type] of Object.entries(actions)) {
+    const g = game(id), s = g.create(79, 1000);
+    if (id === 'fleet') { play(g, s, 0, { type: 'ready' }); play(g, s, 1, { type: 'ready' }); }
+    for (const index of [-1, 0.5, NaN, Infinity, '0', null, 99999]) {
+      const before = JSON.stringify(s);
+      assert.equal(g.action(s, 0, { type, index }, 1000), false, `${id} index ${index}`);
+      assert.equal(JSON.stringify(s), before);
+    }
+  }
+});
+
+test('fleet: overlapping manual placements are rejected and a valid move updates only my fleet', () => {
+  const g = game('fleet'), s = g.create(3, 1000), beforeOther = g.view(s, 1).ownBoard;
+  // Move the long ship to overlap a different ship's first square.
+  const own = g.view(s, 0).ownShips;
+  assert.equal(g.action(s, 0, { type: 'placeShip', ship: 0, index: own[1].index, vertical: own[1].vertical }, 1000), false);
+  let accepted = false;
+  for (let i = 0; i < 64 && !accepted; i++) for (const vertical of [false, true]) {
+    if (g.action(s, 0, { type: 'placeShip', ship: 0, index: i, vertical }, 1000)) { accepted = true; break; }
+  }
+  assert.ok(accepted); assert.deepEqual(g.view(s, 1).ownBoard, beforeOther);
+  assert.equal(g.view(s, 0).ownBoard.filter(x => x === 1).length, 9);
+});
+
+test('dots: the last shared edge may capture two boxes in one turn', () => {
+  const g = game('dots'), s = g.create(1, 1000);
+  // Two top-left adjacent boxes share vertical 21; all six outer sides exist.
+  for (const index of [0, 1, 4, 5, 20, 22]) s.edges[index] = 0;
+  s.turn = 1; play(g, s, 1, { type: 'line', index: 21 });
+  assert.deepEqual(s.scores, [0, 2]); assert.equal(s.turn, 1);
+});
+
+test('reversi: an opponent with no legal moves is skipped without requiring client action', () => {
+  const g = game('reversi'), s = g.create(1, 1000);
+  s.board = Array(64).fill(0); s.board[0] = -1; s.board[1] = 1; s.board[3] = -1; s.board[4] = 1; s.turn = 0;
+  play(g, s, 0, { type: 'place', index: 0 });
+  assert.equal(s.status, 'playing'); assert.equal(s.turn, 0); assert.equal(s.passed, 1);
+  assert.deepEqual(g.view(s, 0).legalMoves, [3]);
+  play(g, s, 0, { type: 'place', index: 3 }); assert.equal(s.winner, 0);
+});
+
+for (const id of ['dots', 'memory', 'reversi']) {
+  test(`${id}: expired turns forfeit and late inputs cannot beat the server clock`, () => {
+    const g = game(id), s = g.create(1, 1000);
+    const type = id === 'dots' ? 'line' : id === 'memory' ? 'flip' : 'place';
+    const index = id === 'reversi' ? 19 : 0;
+    assert.equal(g.action(s, 0, { type, index }, s.endsAt + 1), false);
+    g.tick(s, 50, s.endsAt + 1); assert.equal(s.winner, 1); assert.equal(s.status, 'finished');
+  });
+}
+
+test('mines: blank flood fill reveals multiple cells and chord requires correctly counted flags', () => {
+  const g = game('mines'), s = g.create(13, 1000);
+  const neighbors = index => {
+    const x = index % 9, y = Math.floor(index / 9), result = [];
+    for (let yy = Math.max(0, y - 1); yy <= Math.min(8, y + 1); yy++) for (let xx = Math.max(0, x - 1); xx <= Math.min(8, x + 1); xx++) if (xx !== x || yy !== y) result.push(yy * 9 + xx);
+    return result;
+  };
+  const blank = s.mineMap.findIndex((mine, i) => !mine && neighbors(i).every(n => !s.mineMap[n]));
+  play(g, s, 0, { type: 'open', index: blank }); assert.ok(s.safeOpened[0] > 1);
+  assert.equal(g.action(s, 0, { type: 'chord', index: blank }, 1000), false);
+  const number = s.mineMap.findIndex((mine, i) => !mine && neighbors(i).some(n => s.mineMap[n]) && neighbors(i).some(n => !s.mineMap[n] && !s.opened[0][n]));
+  if (!s.opened[0][number]) play(g, s, 0, { type: 'open', index: number });
+  assert.equal(g.action(s, 0, { type: 'chord', index: number }, 1000), false);
+  neighbors(number).filter(i => s.mineMap[i]).forEach(index => play(g, s, 0, { type: 'flag', index }));
+  const before = s.safeOpened[0]; play(g, s, 0, { type: 'chord', index: number }); assert.ok(s.safeOpened[0] > before);
+});
+
+test('hidden views never share nested objects with authoritative maps', () => {
+  for (const id of ['fleet', 'memory', 'mines', 'rps']) {
+    const g = game(id), s = g.create(6, 1000), before = JSON.stringify(s), v = g.view(s, 0);
+    if (id === 'fleet') { v.ownShips[0].cells[0] = 99; v.targetBoard[0] = 2; }
+    if (id === 'memory') v.faces[0] = 999;
+    if (id === 'mines') { v.board[0] = 8; v.flags[0] = true; }
+    if (id === 'rps') v.chosen[0] = true;
+    assert.equal(JSON.stringify(s), before, id);
+  }
+});
