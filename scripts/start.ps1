@@ -1,4 +1,4 @@
-param([int]$Port=4387,[switch]$LocalOnly,[switch]$NoBrowser)
+param([int]$Port=4390,[switch]$LocalOnly,[switch]$NoBrowser,[switch]$NoBuild)
 $ErrorActionPreference='Stop'
 $taskRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if(-not $taskRoot.StartsWith('D:\',[StringComparison]::OrdinalIgnoreCase)){throw '本项目只允许从 D 盘运行。'}
@@ -16,11 +16,12 @@ $env:PORT=[string]$Port
 $env:Path=(Split-Path $nodeBin)+';D:\codexAI\.toolchains\git\cmd;'+$env:Path
 Set-Location -LiteralPath $taskRoot
 if(-not (Test-Path -LiteralPath (Join-Path $taskRoot 'node_modules\socket.io'))){Write-Host '正在安装 D 盘项目依赖…';& $npmBin ci --no-audit --no-fund;if($LASTEXITCODE -ne 0){throw '依赖安装失败'}}
-if(-not (Test-Path -LiteralPath (Join-Path $taskRoot 'dist\index.html'))){Write-Host '正在构建游戏页面…';& $npmBin run build;if($LASTEXITCODE -ne 0){throw '页面构建失败'}}
+if(-not $NoBuild){Write-Host '正在构建游戏页面…';& $npmBin run build;if($LASTEXITCODE -ne 0){throw '页面构建失败'}}
+elseif(-not (Test-Path -LiteralPath (Join-Path $taskRoot 'dist\index.html'))){throw '缺少 dist/index.html，请去掉 -NoBuild 重新启动。'}
 $localUrl="http://127.0.0.1:$Port"
 $stateFile=Join-Path $runtimeDir 'state.json'
 $oldState=$null;if(Test-Path -LiteralPath $stateFile){try{$oldState=Get-Content -LiteralPath $stateFile -Raw|ConvertFrom-Json}catch{}}
-$ready=$false;try{$health=Invoke-RestMethod -Uri "$localUrl/health" -TimeoutSec 2;$ready=$health.ok -and $health.name -eq 'DUO PLAY'}catch{}
+$ready=$false;try{$health=Invoke-RestMethod -Uri "$localUrl/health" -TimeoutSec 2;if($health.ok -and $health.name -eq 'DUO PLAY' -and $health.version -eq '1.0.0'){throw '该端口运行旧版服务，请使用新版默认 4390 端口。旧服务不会被自动停止。'};$ready=$health.ok -and $health.name -eq 'DUO PLAY' -and $health.version -eq '2.0.0'}catch{if($_.Exception.Message -like '*旧版服务*'){throw}}
 $serverProcess=$null
 if(-not $ready){
  $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -33,7 +34,7 @@ $state=[ordered]@{project=$taskRoot;port=$Port;serverPid=$serverNumber;tunnelPid
 Write-Host "本地服务已就绪：$localUrl"
 if(-not $LocalOnly){
  $publicUrl=$null;$tunnelProcess=$null
- if($oldState -and $oldState.tunnelPid -and $oldState.server -like 'https://*.trycloudflare.com'){
+ if($oldState -and $oldState.port -eq $Port -and $oldState.tunnelPid -and $oldState.server -like 'https://*.trycloudflare.com'){
   $existing=Get-CimInstance Win32_Process -Filter ('ProcessId='+[int]$oldState.tunnelPid) -ErrorAction SilentlyContinue
   if($existing -and $existing.ExecutablePath -eq (Join-Path $runtimeDir 'bin\cloudflared.exe')){try{$check=Invoke-RestMethod -Uri ($oldState.server+'/health') -TimeoutSec 6;if($check.ok){$publicUrl=$oldState.server;$state.tunnelPid=$oldState.tunnelPid}}catch{}}
  }

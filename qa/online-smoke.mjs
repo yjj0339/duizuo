@@ -44,6 +44,7 @@ async function newRoom(app, gameId) {
 
 async function waitPlaying(a, b) {
   await waitFor(() => a.snapshot?.room?.phase === 'playing' && a.snapshot?.game && b.snapshot?.game, 8000, '开局');
+  await waitFor(() => !a.snapshot?.room?.paused && a.snapshot.serverNow >= (a.snapshot.room.startedAt ?? 0), 9000, '倒计时结束且未暂停');
 }
 
 async function finish(a, b) {
@@ -83,6 +84,7 @@ async function protocolRoom(app) {
   const identity = await resumed.resume(token);
   check('断线后凭令牌恢复原身份', identity.ok === true && identity.player === 0 && identity.code === code, JSON.stringify(identity));
   await waitFor(() => resumed.snapshot?.game, 5000, '恢复后快照');
+  await waitFor(() => !resumed.snapshot?.room?.paused && resumed.snapshot.serverNow >= (resumed.snapshot.room.startedAt ?? 0), 9000, '恢复后解除暂停与倒计时');
   check('恢复后仍在对局中且棋盘保留', resumed.snapshot.room.phase === 'playing' && resumed.snapshot.game.board.includes(0));
 
   const resigned = await resumed.action({ type: 'resign' });

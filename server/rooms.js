@@ -2,9 +2,14 @@ import { randomInt, randomBytes } from 'node:crypto';
 const fail=(message,code='INVALID')=>({ok:false,message,code});
 const safeName=v=>typeof v==='string'?v.trim().replace(/[\u0000-\u001f\u007f<>]/g,'').slice(0,18):'';
 export class Rooms {
-  constructor({engines,clock=Date.now,persist=()=>{},countdownMs=3000}) {
-    this.engines=engines;this.clock=clock;this.persist=persist;this.countdownMs=countdownMs;
+  constructor({engines,clock=Date.now,persist=()=>{},countdownMs=3000,graceMs=180000,initialState=null}) {
+    this.engines=engines;this.clock=clock;this.persist=persist;this.countdownMs=countdownMs;this.graceMs=graceMs;
     this.rooms=new Map();this.connections=new Map();this.tokens=new Map();
+    if(initialState?.version===2)for(const saved of initialState.rooms||[]){
+      if(!engines[saved.gameId])continue;const room=structuredClone(saved),now=clock();
+      room.timeShift=now-(room.frozenNow??now);room.pausedAt=room.phase==='playing'?now:null;room.resumeAt=null;room.touchedAt=now;
+      room.players.forEach((p,slot)=>{if(p){p.conn=null;p.connected=false;p.active=false;p.awaySince=now;p.disconnectedAt=now;this.tokens.set(p.token,{room,slot,participant:p});}});this.rooms.set(room.code,room);
+    }
   }
   handle(event,id,payload={}) {
     if(!payload||typeof payload!=='object'||Array.isArray(payload))return fail('请求格式无效');
@@ -28,13 +33,17 @@ export class Rooms {
     if(event==='resume') {
       if(typeof payload.token!=='string'||payload.token.length>100)return fail('会话已失效','SESSION');
       const s=this.tokens.get(payload.token);if(!s||!this.rooms.has(s.room.code))return fail('房间已关闭，请重新创建或加入','SESSION');
-      const old=s.participant.conn;if(old)this.connections.delete(old);
-      this.leave(id);s.participant.conn=id;s.participant.connected=true;s.participant.disconnectedAt=null;s.room.touchedAt=now;
-      this.connections.set(id,s);return this.identity(s);
+      const old=s.participant.conn;if(old===id)return this.identity(s);if(old)this.connections.delete(old);
+      this.leave(id);s.participant.conn=id;s.participant.connected=true;s.participant.active=true;s.participant.awaySince=null;s.participant.disconnectedAt=null;s.room.touchedAt=now;
+      this.connections.set(id,s);this.presence(s.room,now);return this.identity(s);
     }
     const s=this.connections.get(id);if(!s)return fail('请先创建或加入房间','SESSION');
     const {room,participant:p,slot}=s;room.touchedAt=now;
     if(event==='leave'){this.leave(id);return {ok:true};}
+    if(event==='presence'){
+      p.active=payload.active!==false;if(p.active)p.awaySince=null;else p.awaySince??=now;
+      this.presence(room,now);return {ok:true};
+    }
     if(event==='select') {
       if(room.phase==='playing')return fail('请在本局结束后更换游戏');
       if(slot!==0&&room.players[0])return fail('请让房主选择游戏');
@@ -45,7 +54,7 @@ export class Rooms {
     }
     if(event==='ready') {
       if(room.phase!=='waiting')return fail('请先选择再来一局');
-      p.ready=payload.ready!==false;if(room.players.every(x=>x?.connected&&x.ready))this.start(room,now);return {ok:true};
+      p.ready=payload.ready!==false;if(room.players.every(x=>x?.connected&&x.active!==false&&x.ready))this.start(room,now);return {ok:true};
     }
     if(event==='rematch') {
       if(room.phase==='waiting'&&room.recorded)return {ok:true};
@@ -61,23 +70,31 @@ export class Rooms {
     }
     if(event==='action') {
       if(room.phase!=='playing'||!room.game)return fail('等待双方准备后开始');
-      if(now<room.startedAt)return fail('双方就位，倒计时后开始','COUNTDOWN');
+      if(room.pausedAt!=null)return fail('对局已保护暂停，等待双方回来','PAUSED');
+      const gameNow=now-(room.timeShift||0);
+      if(gameNow<room.startedAt)return fail('双方就位，倒计时后开始','COUNTDOWN');
       if(!Number.isSafeInteger(payload.seq)||payload.seq<=p.lastSeq)return fail('这次操作已处理，请重试','DUPLICATE');
       const a=payload.action;if(!a||typeof a!=='object'||Array.isArray(a)||typeof a.type!=='string'||JSON.stringify(a).length>4096)return fail('操作无效');
       if(p.rateAt!==Math.floor(now/1000)){p.rateAt=Math.floor(now/1000);p.rateCount=0;}if(++p.rateCount>120)return fail('操作过快，请稍等');
       if(a.type==='resign'){p.lastSeq=payload.seq;room.game.status='finished';room.game.winner=1-slot;room.game.message='对方认输';this.finish(room,now);return {ok:true};}
-      let accepted=false;try{accepted=this.engines[room.gameId].action(room.game,slot,a,now)===true;}catch{return fail('操作未被接受');}
+      let accepted=false;try{accepted=this.engines[room.gameId].action(room.game,slot,a,gameNow)===true;}catch{return fail('操作未被接受');}
       if(!accepted)return fail('当前不能这样操作','MOVE');p.lastSeq=payload.seq;
       if(room.game.status==='finished')this.finish(room,now);return {ok:true};
     }
     return fail('不支持的请求');
   }
   attach(room,slot,name,id,now) {
-    const token=randomBytes(24).toString('hex'),p={name,token,conn:id,connected:true,ready:false,lastSeq:0,disconnectedAt:null};
+    const token=randomBytes(24).toString('hex'),p={name,token,conn:id,connected:true,active:true,awaySince:null,ready:false,lastSeq:0,disconnectedAt:null};
     room.players[slot]=p;room.touchedAt=now;const s={room,slot,participant:p};this.connections.set(id,s);this.tokens.set(token,s);return this.identity(s);
   }
   identity(s){return {ok:true,code:s.room.code,player:s.slot,token:s.participant.token,nextSeq:s.participant.lastSeq+1};}
-  start(room,now){const start=now+this.countdownMs;room.game=this.engines[room.gameId].create(randomInt(1,0xffffffff),start);room.phase='playing';room.recorded=false;room.startedAt=start;room.players.forEach(x=>x.ready=false);}
+  start(room,now){const start=now+this.countdownMs;room.game=this.engines[room.gameId].create(randomInt(1,0xffffffff),start);room.phase='playing';room.recorded=false;room.matchId=randomBytes(8).toString('hex');room.startedAt=start;room.timeShift=0;room.pausedAt=null;room.resumeAt=null;room.players.forEach(x=>x.ready=false);}
+  presence(room,now){
+    if(room.phase!=='playing')return;
+    if(room.players.some(p=>!p?.connected||p.active===false)){room.pausedAt??=now;room.resumeAt=null;}
+    else if(room.pausedAt!=null&&room.resumeAt==null)room.resumeAt=now+2000;
+  }
+  exportState(){const now=this.clock();return {version:2,rooms:[...this.rooms.values()].map(r=>({...structuredClone(r),frozenNow:(r.pausedAt??now)-(r.timeShift||0)}))};}
   finish(room,now){
     if(room.recorded)return;room.recorded=true;room.phase='finished';room.touchedAt=now;
     const g=room.game,winner=g.winner;if(winner===0||winner===1)room.series.scores[winner]++;else{room.series.scores[0]+=.5;room.series.scores[1]+=.5;}
@@ -86,9 +103,12 @@ export class Rooms {
   }
   snapshot(id){
     const s=this.connections.get(id);if(!s)return null;const {room,slot}=s;
-    return {player:slot,serverNow:this.clock(),room:{code:room.code,gameId:room.gameId,phase:room.phase,players:room.players.map(p=>p?{name:p.name,connected:p.connected,ready:p.ready}:null),series:structuredClone(room.series),history:structuredClone(room.history),reaction:room.reaction?{...room.reaction}:null,startedAt:room.startedAt||null},game:room.game?this.engines[room.gameId].view(room.game,slot):null};
+    const now=this.clock(),shift=(room.timeShift||0)+(room.pausedAt!=null?now-room.pausedAt:0);
+    const game=room.game?this.engines[room.gameId].view(room.game,slot):null;
+    const translate=o=>{if(!o||typeof o!=='object')return;for(const [k,v]of Object.entries(o)){if(typeof v==='number'&&v>0&&(/At$|Until$/.test(k)||k==='now'||k==='until'))o[k]=v+shift;else if(v&&typeof v==='object')translate(v);}};translate(game);
+    return {player:slot,serverNow:now,room:{code:room.code,gameId:room.gameId,phase:room.phase,matchId:room.matchId,paused:room.phase==='playing'&&room.pausedAt!=null,resumeAt:room.resumeAt||null,graceMs:this.graceMs,players:room.players.map(p=>p?{name:p.name,connected:p.connected,active:p.active!==false,ready:p.ready,protectedUntil:p.awaySince!=null?p.awaySince+this.graceMs:null}:null),series:structuredClone(room.series),history:structuredClone(room.history),reaction:room.reaction?{...room.reaction}:null,startedAt:room.startedAt?room.startedAt+shift:null},game};
   }
-  disconnect(id){const s=this.connections.get(id);if(!s)return;this.connections.delete(id);s.participant.connected=false;s.participant.conn=null;s.participant.disconnectedAt=this.clock();s.participant.ready=false;s.room.touchedAt=this.clock();}
+  disconnect(id){const s=this.connections.get(id);if(!s)return;const now=this.clock();this.connections.delete(id);s.participant.connected=false;s.participant.active=false;s.participant.conn=null;s.participant.disconnectedAt=now;s.participant.awaySince??=now;s.room.touchedAt=now;this.presence(s.room,now);}
   leave(id){
     const s=this.connections.get(id);if(!s)return;const {room,slot,participant:p}=s;
     if(room.phase==='playing'&&room.game){room.game.status='finished';room.game.winner=room.players[1-slot]?1-slot:-1;room.game.message='对方离开了房间';this.finish(room,this.clock());}
@@ -99,10 +119,13 @@ export class Rooms {
     const now=this.clock();for(const room of this.rooms.values()){
       if(!room.players.some(x=>x?.connected)&&now-room.touchedAt>3600000){room.players.forEach(p=>{if(p)this.tokens.delete(p.token);});this.rooms.delete(room.code);continue;}
       if(room.phase!=='playing'||!room.game)continue;
-      if(now<room.startedAt)continue;
-      const expired=room.players.map(p=>!p||(!p.connected&&p.disconnectedAt!==null&&now-p.disconnectedAt>60000));
-      if(expired.some(Boolean)){room.game.status='finished';room.game.winner=expired.every(Boolean)?-1:expired[0]?1:0;room.game.message='断线超过 60 秒，本局结束';}
-      else try{this.engines[room.gameId].tick?.(room.game,dt,now);}catch(e){console.error('Game tick failed:',room.gameId,e.message);room.game.status='finished';room.game.winner=-1;room.game.message='本局异常结束，请再来一局';}
+      const expired=room.players.map(p=>!p||(p.awaySince!=null&&now-p.awaySince>this.graceMs));
+      if(expired.some(Boolean)){room.game.status='finished';room.game.winner=expired.every(Boolean)?-1:expired[0]?1:0;room.game.message='暂离超过 3 分钟，本局结束';}
+      else {
+        if(room.pausedAt!=null){if(room.resumeAt!=null&&now>=room.resumeAt){room.timeShift=(room.timeShift||0)+now-room.pausedAt;room.pausedAt=null;room.resumeAt=null;}else continue;}
+        const gameNow=now-(room.timeShift||0);if(gameNow<room.startedAt)continue;
+        try{this.engines[room.gameId].tick?.(room.game,dt,gameNow);}catch(e){console.error('Game tick failed:',room.gameId,e.message);room.game.status='finished';room.game.winner=-1;room.game.message='本局异常结束，请再来一局';}
+      }
       if(room.game.status==='finished')this.finish(room,now);
     }
   }

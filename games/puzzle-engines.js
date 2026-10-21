@@ -1,4 +1,5 @@
 // All clocks, random streams, scores and answers belong to the server.
+import {additionalQuestions} from '../shared/trivia.js';
 const clone = value => JSON.parse(JSON.stringify(value));
 const integer = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
 const base = (now, duration, message) => ({ status: 'playing', winner: null, scores: [0, 0], message, startedAt: now, endsAt: now + duration, _now: now });
@@ -110,6 +111,7 @@ const sudoku = {
 
 // Fixed, reviewed general knowledge; correct indices are never sent before reveal.
 const QUESTIONS = [
+  ...additionalQuestions,
   ['太阳系中最大的行星是？', ['木星', '地球', '火星', '金星'], 0, '木星是太阳系中体积和质量最大的行星。'],
   ['标准大气压下，纯水的沸点约为？', ['100°C', '0°C', '50°C', '200°C'], 0, '标准大气压下，纯水约在 100°C 沸腾。'],
   ['中国传统节日中，农历八月十五是？', ['中秋节', '端午节', '元宵节', '重阳节'], 0, '中秋节在农历八月十五。'],

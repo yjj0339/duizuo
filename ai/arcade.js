@@ -1,0 +1,33 @@
+const DIR={up:[0,-1],right:[1,0],down:[0,1],left:[-1,0]},clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),same=(a,b)=>a.x===b.x&&a.y===b.y;
+function path(grid,from,goal,blocked=()=>false){const cols=grid[0].length,queue=[{...from,path:[]}],seen=new Set([from.y*cols+from.x]);for(let k=0;k<queue.length;k++){const at=queue[k];if(goal(at))return at.path;for(const[dir,[dx,dy]]of Object.entries(DIR)){const next={x:at.x+dx,y:at.y+dy};const key=next.y*cols+next.x;if(grid[next.y]?.[next.x]!==0||seen.has(key)||blocked(next))continue;seen.add(key);queue.push({...next,path:[...at.path,dir]});}}return null;}
+export function hockey(v,p){const b=v.puck,own=v.paddles[p],side=p?-1:1,incoming=b.vx*side<0,goalX=p?656:64;let y=b.y;
+ if(incoming&&Math.abs(b.vx)>1){const t=Math.max(0,(goalX-b.x)/b.vx);y=b.y+b.vy*t;const span=418;y=11+Math.abs(((y-11+span)%(span*2)+span*2)%(span*2)-span);}
+ let x=goalX;if((p?b.x>390:b.x<330)&&(!incoming||Math.abs(b.x-own.x)<160)){x=b.x-side*35;y=b.y+(b.y>220?8:-8);if(Math.hypot(own.x-(b.x-side*38),own.y-b.y)<48)x=b.x+side*50;}
+ return{type:'move',x:clamp(x,p?390:28,p?692:330),y:clamp(y,30,410)};}
+function los(a,b,obstacles,margin=3){const d=Math.hypot(b.x-a.x,b.y-a.y),steps=Math.ceil(d/8);for(let i=0;i<=steps;i++){const x=a.x+(b.x-a.x)*i/steps,y=a.y+(b.y-a.y)*i/steps;if(obstacles.some(o=>x>o.x-margin&&x<o.x+o.w+margin&&y>o.y-margin&&y<o.y+o.h+margin))return false;}return true;}
+export function tanks(v,p,b,level,now){const own=v.tanks[p],enemy=v.tanks[1-p];b.phase=(b.phase||0)+1;
+ if(b.phase%3===1){const travel=Math.hypot(enemy.x-own.x,enemy.y-own.y)/350;return{type:'aim',x:clamp(enemy.x+enemy.dx*100*travel,0,720),y:clamp(enemy.y+enemy.dy*100*travel,0,480)};}
+ if(b.phase%3===2&&now>=own.nextShot&&los(own,enemy,v.obstacles))return{type:'fire'};
+ let dodge=null,nearest=Infinity;for(const bullet of v.bullets.filter(q=>q.owner!==p)){const vx=own.x-bullet.x,vy=own.y-bullet.y,t=(vx*bullet.vx+vy*bullet.vy)/(350**2),miss=Math.hypot(vx-bullet.vx*t,vy-bullet.vy*t);if(t>0&&t<.65&&miss<45&&t<nearest){nearest=t;const sign=(vx*(-bullet.vy)+vy*bullet.vx)>=0?1:-1;dodge={dx:-bullet.vy/350*sign,dy:bullet.vx/350*sign};}}
+ if(dodge)return{type:'control',...dodge};
+ const step=24,grid=Array.from({length:20},(_,y)=>Array.from({length:30},(_,x)=>{const xx=x*step+12,yy=y*step+12;return xx<20||xx>700||yy<20||yy>460||v.obstacles.some(o=>xx>o.x-22&&xx<o.x+o.w+22&&yy>o.y-22&&yy<o.y+o.h+22)?1:0;}));
+ const from={x:clamp(Math.floor(own.x/step),0,29),y:clamp(Math.floor(own.y/step),0,19)};grid[from.y][from.x]=0;
+ const route=path(grid,from,a=>{const q={x:a.x*step+12,y:a.y*step+12};return Math.hypot(q.x-enemy.x,q.y-enemy.y)>100&&los(q,enemy,v.obstacles,8);});
+ if(route?.length){const[dx,dy]=DIR[route[0]];return{type:'control',dx,dy};}
+ const orbit=level==='casual'?0:Math.sin(now/1200+p)*.65;return{type:'control',dx:0,dy:orbit};}
+function blast(v,b){const out=[{x:b.x,y:b.y}];for(const[dx,dy]of Object.values(DIR))for(let n=1;n<=2;n++){const q={x:b.x+dx*n,y:b.y+dy*n},cell=v.grid[q.y]?.[q.x];if(cell===undefined||cell===1)break;out.push(q);if(cell===2)break;}return out;}
+export function bomber(v,p,b,level,now){const own=v.players[p],enemy=v.players[1-p];if(!own.alive||now<own.nextMove)return null;
+ const danger=new Set([...v.bombs.flatMap(q=>blast(v,q)),...v.flames].map(q=>q.y*v.cols+q.x)),blocked=q=>v.bombs.some(b=>same(q,b))||same(q,enemy),safe=q=>!danger.has(q.y*v.cols+q.x);
+ if(!safe(own)){const escape=path(v.grid,own,safe,blocked);return escape?.length?{type:'move',dir:escape[0]}:null;}
+ const adjacent=Object.values(DIR).some(([dx,dy])=>v.grid[own.y+dy]?.[own.x+dx]===2),enemyInBlast=blast(v,own).some(q=>same(q,enemy));
+ if((adjacent||enemyInBlast)&&v.bombs.filter(q=>q.owner===p).length<2&&!v.bombs.some(q=>same(q,own))){const future=new Set([...danger,...blast(v,own).map(q=>q.y*v.cols+q.x)]),route=path(v.grid,own,q=>!future.has(q.y*v.cols+q.x),q=>blocked(q)||danger.has(q.y*v.cols+q.x));if(route&&route.length<=8)return{type:'bomb'};}
+ const route=path(v.grid,own,q=>{if(same(q,own))return false;return Object.values(DIR).some(([dx,dy])=>v.grid[q.y+dy]?.[q.x+dx]===2)||Math.abs(q.x-enemy.x)+Math.abs(q.y-enemy.y)<=2;},q=>blocked(q)||!safe(q));
+ return route?.length?{type:'move',dir:route[0]}:null;}
+export function snake(v,p){const own=v.snakes[p];if(!own.alive||own.pending!==own.dir)return null;const head=own.body[0],blocked=new Set(v.snakes.flatMap(s=>s.body.slice(0,-1).map(q=>q.y*v.cols+q.x))),enemy=v.snakes[1-p],enemyHead=enemy.body[0],grid=Array.from({length:v.rows},(_,y)=>Array.from({length:v.cols},(_,x)=>blocked.has(y*v.cols+x)?1:0));let best=null,score=-Infinity;
+ for(const[dir,[dx,dy]]of Object.entries(DIR)){const now=DIR[own.dir];if(dx===-now[0]&&dy===-now[1])continue;const x=head.x+dx,y=head.y+dy;if(grid[y]?.[x]!==0)continue;const queue=[{x,y,d:0}],seen=new Set([y*v.cols+x]);let food=Infinity;for(let k=0;k<queue.length;k++){const q=queue[k];if(v.food.some(f=>same(f,q)))food=Math.min(food,q.d);for(const[xx,yy]of Object.values(DIR)){const a=q.x+xx,b=q.y+yy,key=b*v.cols+a;if(grid[b]?.[a]===0&&!seen.has(key)){seen.add(key);queue.push({x:a,y:b,d:q.d+1});}}}const enemyRisk=Math.abs(x-enemyHead.x)+Math.abs(y-enemyHead.y)<=1?1500:0;const n=Math.min(seen.size,own.body.length+20)*10-(Number.isFinite(food)?food:60)*3-enemyRisk+(seen.size<own.body.length?-1000:0);if(n>score){score=n;best=dir;}}
+ return best&&best!==own.pending?{type:'direction',dir:best}:null;}
+const terrain=x=>425-65*Math.exp(-((x-450)**2)/12500);
+export function slingshot(v,p,b,level){if(v.turn!==p||v.projectile)return null;let best=Infinity,answer={angle:45,power:80};const target=v.castles[1-p],origin=v.castles[p],direction=p?-1:1;
+ for(let angle=10;angle<=80;angle+=level==='casual'?5:2)for(let power=30;power<=100;power+=level==='casual'?5:2){const a=angle*Math.PI/180;let x=origin.x+direction*28,y=terrain(origin.x)-78,vx=Math.cos(a)*power*5*direction,vy=-Math.sin(a)*power*5;for(let t=0;t<720;t++){vx+=v.wind/120;vy+=280/120;x+=vx/120;y+=vy/120;const direct=Math.abs(x-target.x)<30&&y>terrain(target.x)-76&&y<terrain(target.x);if(direct||x< -50||x>950||y>=terrain(x)){const cost=direct?angle*.001:Math.hypot(x-target.x,y-(terrain(target.x)-28))+1;if(cost<best){best=cost;answer={angle,power};}break;}}}return{type:'shoot',...answer};}
+export function maze(v,p,b,level,now){const own=v.players[p];if(now<own.nextMove)return null;const enemy=v.players[1-p],goal=v.flag.carrier===p?v.bases[p]:v.flag.carrier===1-p?enemy:v.flag;
+ const route=path(v.grid,own,q=>same(q,goal),q=>v.flag.carrier===null&&same(q,enemy));return route?.length?{type:'move',dir:route[0]}:null;}
