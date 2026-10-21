@@ -48,6 +48,7 @@ export class Rooms {
       p.ready=payload.ready!==false;if(room.players.every(x=>x?.connected&&x.ready))this.start(room,now);return {ok:true};
     }
     if(event==='rematch') {
+      if(room.phase==='waiting'&&room.recorded)return {ok:true};
       if(room.phase!=='finished')return fail('本局尚未结束');
       const series=room.series;
       if(series.round<series.total){series.round++;const ids=Object.keys(this.engines).filter(x=>x!==room.gameId);if(ids.length)room.gameId=ids[randomInt(ids.length)];}
