@@ -56,7 +56,7 @@ if(-not $LocalOnly){
   for($i=0;$i -lt 90;$i++){Start-Sleep -Milliseconds 500;foreach($candidate in @($tunnelLog,(Join-Path $runtimeDir "logs\tunnel-$stamp.stderr.log"))){if(-not (Test-Path -LiteralPath $candidate)){continue};$text=$null;try{$text=Get-Content -LiteralPath $candidate -Raw -ErrorAction Stop}catch{continue};if(-not $text){continue};$match=[regex]::Match($text,'https://[a-z0-9-]+\.trycloudflare\.com');if($match.Success){$publicUrl=$match.Value;break}};if($publicUrl){break};if($tunnelProcess.HasExited){break}}
  }
  if($publicUrl){
-  $publicReady=$false;for($i=0;$i -lt 8;$i++){try{$check=Invoke-RestMethod -Uri ($publicUrl+'/health') -TimeoutSec 5;if($check.ok){$publicReady=$true;break}}catch{};Start-Sleep -Milliseconds 700}
+  $publicReady=$false;for($i=0;$i -lt 30;$i++){try{$check=Invoke-RestMethod -Uri ($publicUrl+'/health') -TimeoutSec 5;if($check.ok){$publicReady=$true;break}}catch{};Start-Sleep -Milliseconds 1000}
   if($publicReady){
    $state.server=$publicUrl;$state.playUrl='https://yjj0339.github.io/duo-play/?server='+[Uri]::EscapeDataString($publicUrl)
    $endpoint=@{server=$publicUrl;kind='temporary-tunnel';updatedAt=(Get-Date).ToUniversalTime().ToString('o')}|ConvertTo-Json
@@ -77,7 +77,28 @@ if(-not $LocalOnly){
     }catch{Write-Warning 'GitHub 地址未同步；带服务器参数的邀请链接仍可使用。'}
    }
    Write-Host "公网服务已验证：$publicUrl"
-  }else{Write-Warning '公网入口暂未通过健康检查，本地服务可用。请检查网络后重试。'}
+  }else{
+    $state.server=$publicUrl
+    $state.playUrl='https://yjj0339.github.io/duo-play/?server='+[Uri]::EscapeDataString($publicUrl)
+    $endpoint=@{server=$publicUrl;kind='temporary-tunnel';updatedAt=(Get-Date).ToUniversalTime().ToString('o')}|ConvertTo-Json
+    Set-Content -LiteralPath (Join-Path $runtimeDir 'endpoint.json') -Value $endpoint -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $taskRoot 'dist\runtime-endpoint.json') -Value $endpoint -Encoding utf8
+    if(Test-Path -LiteralPath $ghBin){
+     try{
+      $remoteText=& $ghBin api repos/yjj0339/duo-play/contents/runtime-endpoint.json 2>$null
+      if($LASTEXITCODE -eq 0){
+       $remote=$remoteText|ConvertFrom-Json;$current=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($remote.content -replace '\s','')))|ConvertFrom-Json
+       if($current.server -ne $publicUrl){
+        $body=@{message='chore: update public multiplayer endpoint';sha=$remote.sha;content=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($endpoint))}|ConvertTo-Json -Compress
+        $bodyFile=Join-Path $runtimeDir 'temp\endpoint-request.json';[IO.File]::WriteAllText($bodyFile,$body,[Text.UTF8Encoding]::new($false))
+        & $ghBin api repos/yjj0339/duo-play/contents/runtime-endpoint.json --method PUT --input $bodyFile --jq '.commit.sha' | Out-Null
+        if($LASTEXITCODE -ne 0){Write-Warning '公开地址未自动同步；请使用下面带服务器参数的链接。'}else{Write-Host 'GitHub 页面已同步新的服务器地址。'}
+       }
+      }else{Write-Warning 'GitHub 地址未同步；带服务器参数的邀请链接仍可使用。'}
+     }catch{Write-Warning 'GitHub 地址未同步；带服务器参数的邀请链接仍可使用。'}
+    }
+    Write-Warning '公网入口已建立但暂未通过健康检查，通常数十秒内恢复；地址已写入状态，稍后刷新页面即可。'
+   }
  }else{Write-Warning '暂未取得公网入口，请查看 runtime/logs 后重试。本地服务仍可使用。'}
 }
 $state|ConvertTo-Json|Set-Content -LiteralPath $stateFile -Encoding utf8
