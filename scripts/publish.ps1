@@ -30,3 +30,13 @@ for($attempt=0;$attempt -lt 3;$attempt++){
 }
 if(-not $pushed){throw '页面推送失败'}
 Write-Host '已推送 GitHub Pages 发布分支：https://yjj0339.github.io/duo-play/'
+# 仅推分支不会立刻刷新线上站点，需要显式触发一次 Pages 重建
+$ghBin='D:\codexAI\.runtime\github-cli\gh.exe'
+if(Test-Path -LiteralPath $ghBin){
+ $env:GH_CONFIG_DIR='D:\codexAI\.runtime\github-config'
+ try{
+  & $ghBin api -X POST repos/yjj0339/duo-play/pages/builds | Out-Null
+  if($LASTEXITCODE -eq 0){Write-Host '已触发 GitHub Pages 重建，线上页面约 1 分钟内更新。'}
+  else{Write-Warning 'Pages 重建未触发，线上可能仍是旧版本，可用 GitHub 页面设置手动重建。'}
+ }catch{Write-Warning 'Pages 重建未触发，线上可能仍是旧版本。'}
+}
