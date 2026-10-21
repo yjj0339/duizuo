@@ -167,8 +167,8 @@
     padding: 18px 8px 16px;
     border-radius: var(--r-xl);
     background: linear-gradient(168deg, rgba(255, 255, 255, .82), rgba(255, 255, 255, .55));
-    backdrop-filter: blur(26px) saturate(1.5);
     -webkit-backdrop-filter: blur(26px) saturate(1.5);
+    backdrop-filter: blur(26px) saturate(1.5);
     border: 1px solid var(--glass-line);
     box-shadow: var(--sh-2), var(--sh-inner);
   }
@@ -224,8 +224,8 @@
     justify-content: space-between;
     margin: 0 -12px;
     padding: 0 12px;
-    backdrop-filter: blur(18px) saturate(1.4);
     -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    backdrop-filter: blur(18px) saturate(1.4);
     background: linear-gradient(180deg, rgba(250, 251, 254, .88), rgba(250, 251, 254, .40));
     border-bottom: 1px solid var(--hairline);
   }
@@ -304,8 +304,8 @@
       radial-gradient(120% 130% at 100% 0%, rgba(255, 214, 232, .55), transparent 58%),
       radial-gradient(110% 120% at 0% 100%, rgba(173, 240, 224, .50), transparent 60%),
       linear-gradient(150deg, rgba(255, 255, 255, .88), rgba(255, 255, 255, .52));
-    backdrop-filter: blur(26px) saturate(1.4);
     -webkit-backdrop-filter: blur(26px) saturate(1.4);
+    backdrop-filter: blur(26px) saturate(1.4);
     border: 1px solid var(--glass-line);
     box-shadow: var(--sh-3), var(--sh-inner);
   }
@@ -413,8 +413,8 @@
     border-radius: var(--r-lg);
     overflow: hidden;
     background: linear-gradient(160deg, rgba(255, 255, 255, .80), rgba(255, 255, 255, .52));
-    backdrop-filter: blur(20px) saturate(1.4);
     -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    backdrop-filter: blur(20px) saturate(1.4);
     border: 1px solid var(--glass-line);
     box-shadow: var(--sh-2), var(--sh-inner);
     transition: transform .34s var(--ease-spring), box-shadow .34s var(--ease), border-color .3s var(--ease);
@@ -510,8 +510,8 @@
     border-radius: var(--r-lg);
     padding: 22px;
     background: linear-gradient(160deg, rgba(255, 255, 255, .84), rgba(255, 255, 255, .56));
-    backdrop-filter: blur(26px) saturate(1.5);
     -webkit-backdrop-filter: blur(26px) saturate(1.5);
+    backdrop-filter: blur(26px) saturate(1.5);
     border: 1px solid var(--glass-line);
     box-shadow: var(--sh-2), var(--sh-inner);
   }
@@ -575,7 +575,8 @@
   .selected-game > span {
     width: 50px; height: 50px; border-radius: 15px;
     display: grid; place-items: center; overflow: hidden;
-    background: radial-gradient(90% 90% at 50% 20%, color-mix(in srgb, var(--art, #9A8BEE) 26%, transparent), transparent 72%), rgba(255, 255, 255, .72);
+    font-size: 20px; font-weight: 700;
+    border: 1px solid var(--glass-line);
     box-shadow: var(--sh-1), var(--sh-inner);
     flex-shrink: 0;
   }
@@ -640,8 +641,8 @@
     padding: 18px; border-radius: var(--r-md);
     background: rgba(255, 255, 255, .52);
     border: 1px solid var(--glass-line);
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
   }
   .note-flower { font-size: 17px; color: var(--p1); }
   .small-note h3 { font-size: 12px; font-weight: 700; }
@@ -688,8 +689,8 @@
     padding: 20px 26px;
     border-radius: var(--r-lg);
     background: linear-gradient(150deg, rgba(255, 255, 255, .86), rgba(255, 255, 255, .56));
-    backdrop-filter: blur(26px) saturate(1.5);
     -webkit-backdrop-filter: blur(26px) saturate(1.5);
+    backdrop-filter: blur(26px) saturate(1.5);
     border: 1px solid var(--glass-line);
     box-shadow: var(--sh-2), var(--sh-inner);
     margin-bottom: 18px;
@@ -732,8 +733,8 @@
     display: grid; place-items: center;
     border-radius: var(--r-lg);
     background: rgba(246, 247, 252, .78);
-    backdrop-filter: blur(9px);
     -webkit-backdrop-filter: blur(9px);
+    backdrop-filter: blur(9px);
   }
   .countdown > div {
     display: grid; justify-items: center; gap: 10px;
@@ -753,8 +754,8 @@
     margin-top: 18px; padding: 30px;
     text-align: center; border-radius: var(--r-lg);
     background: linear-gradient(150deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .6));
-    backdrop-filter: blur(26px) saturate(1.5);
     -webkit-backdrop-filter: blur(26px) saturate(1.5);
+    backdrop-filter: blur(26px) saturate(1.5);
     border: 1px solid var(--glass-line);
     box-shadow: var(--sh-3), var(--sh-inner);
   }
@@ -773,13 +774,13 @@
     border-radius: var(--r-lg);
     background: rgba(255, 255, 255, .5);
     border: 1px solid var(--glass-line);
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
   }
   #play-controls { font-size: 11px; color: var(--muted); }
   .reactions { display: flex; align-items: center; gap: 6px; }
   .reactions button {
-    width: 38px; height: 38px; border-radius: 50%; font-size: 17px;
+    width: 42px; height: 42px; border-radius: 50%; font-size: 18px;
     background: rgba(255, 255, 255, .68);
     border: 1px solid var(--glass-line);
     transition: transform .24s var(--ease-spring), background .2s var(--ease);
@@ -827,8 +828,8 @@
     border: 0; padding: 0; max-width: min(560px, calc(100vw - 32px));
     border-radius: var(--r-lg);
     background: linear-gradient(155deg, rgba(255, 255, 255, .94), rgba(255, 255, 255, .78));
-    backdrop-filter: blur(30px) saturate(1.6);
     -webkit-backdrop-filter: blur(30px) saturate(1.6);
+    backdrop-filter: blur(30px) saturate(1.6);
     border: 1px solid var(--glass-line);
     box-shadow: var(--sh-3);
     color: var(--ink);
@@ -890,8 +891,8 @@
     padding: 13px 24px; border-radius: 20px;
     font-size: 12px; color: var(--ink);
     background: linear-gradient(160deg, rgba(255, 255, 255, .95), rgba(255, 255, 255, .78));
-    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     border: 1px solid var(--glass-line);
     box-shadow: var(--sh-3);
     opacity: 0; pointer-events: none;
@@ -908,8 +909,8 @@
     border-radius: var(--r-lg);
     padding: 22px;
     background: linear-gradient(155deg, rgba(255, 255, 255, .84), rgba(255, 255, 255, .54));
-    backdrop-filter: blur(24px) saturate(1.4);
     -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    backdrop-filter: blur(24px) saturate(1.4);
     border: 1px solid var(--glass-line);
     box-shadow: var(--sh-2), var(--sh-inner);
   }
@@ -1042,8 +1043,13 @@
     .card-copy { padding: 13px; }
     .card-copy p { font-size: 11px; }
     .match-heading { padding: 15px; }
-    .match-player { flex-direction: column; gap: 6px; max-width: 116px; text-align: center; }
+    .match-player { flex-direction: column; gap: 6px; max-width: 116px; min-width: 0; text-align: center; }
     .match-player:last-child { flex-direction: column; text-align: center; }
+    .match-player > div { min-width: 0; max-width: 100%; }
+    .match-player strong { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .match-player small { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; }
+    .match-title { min-width: 0; }
+    .match-title > span { display: block; overflow-wrap: anywhere; }
     .match-player > b { margin-left: 0; }
     .match-player:last-child > b { margin-right: 0; }
     .match-title h1 { font-size: 21px; }
@@ -1071,7 +1077,7 @@
     .wordmark > small { display: none; }
     .top-actions { gap: 7px; }
     .connection-pill { font-size: 9px; padding: 7px 9px; gap: 5px; }
-    .icon-button { width: 33px; height: 33px; font-size: 15px; }
+    .icon-button { width: 42px; height: 42px; font-size: 17px; }
 
     .lobby { display: flex; flex-direction: column; align-items: stretch; padding-top: 16px; gap: 20px; }
     .lobby-main { display: contents; }
@@ -1125,18 +1131,24 @@
     .in-game .workspace { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
     .play-screen { padding-top: 14px; }
     .play-heading { margin-bottom: 10px; }
-    .match-heading { margin: 10px 0 14px; padding: 12px 10px; gap: 6px; grid-template-columns: 1fr auto 1fr; }
-    .match-player { padding: 8px 6px; }
-    .match-player .avatar { width: 38px; height: 38px; font-size: 20px; border-radius: 13px; }
-    .match-player strong { font-size: 11px; }
-    .match-player small { font-size: 9px; }
-    .match-player > b { font-size: 18px; }
-    .match-title h1 { font-size: 17px; }
-    .match-title > span { font-size: 10px; }
+    .match-heading { margin: 10px 0 14px; padding: 12px 10px; gap: 10px 8px; grid-template-columns: 1fr 1fr; grid-template-areas: "title title" "p0 p1"; }
+    .match-title { grid-area: title; min-width: 0; }
+    #match-p0 { grid-area: p0; }
+    #match-p1 { grid-area: p1; }
+    .match-player { flex-direction: row; gap: 8px; padding: 8px 10px; min-width: 0; text-align: left; }
+    .match-player:last-child { flex-direction: row-reverse; text-align: right; }
+    .match-player > div { min-width: 0; }
+    .match-player strong { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .match-player small { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; }
+    .match-player .avatar { width: 36px; height: 36px; font-size: 19px; border-radius: 12px; flex-shrink: 0; }
+    .match-player > b { font-size: 19px; margin-left: auto; flex-shrink: 0; }
+    .match-player:last-child > b { margin-left: 0; margin-right: auto; }
+    .match-title h1 { font-size: 19px; }
+    .match-title > span { font-size: 10px; display: block; overflow-wrap: anywhere; }
     .match-title small { font-size: 9px; }
     .play-bottom { padding: 11px 13px calc(11px + env(safe-area-inset-bottom)); flex-wrap: wrap; gap: 10px; }
     #play-controls { font-size: 10px; }
-    .reactions button { width: 36px; height: 36px; font-size: 16px; }
+    .reactions button { width: 42px; height: 42px; font-size: 17px; }
     .result-card { padding: 24px 18px; }
     .result-card h2 { font-size: 20px; }
     .countdown > div { padding: 26px 44px; }

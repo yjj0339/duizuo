@@ -29,7 +29,9 @@ export async function createApp({dataDir=path.join(ROOT,'runtime','data'),persis
     catch{res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'});res.end('页面不存在。请先构建前端或打开 GitHub Pages。');}
   });
   const io=new Server(server,{cors:{origin:'*',methods:['GET','POST']},maxHttpBufferSize:16384,pingInterval:12000,pingTimeout:20000,serveClient:false,connectionStateRecovery:{maxDisconnectionDuration:180000,skipMiddlewares:false}});
-  const publish=(volatile=false)=>{channel.notify();for(const [id,socket] of io.sockets.sockets){const view=rooms.snapshot(id);if(view)(volatile?socket.volatile:socket).emit('snapshot',view);}};
+  // 状态必须可靠送达：节奏记忆的音符、问答的题面、反应力的信号都只有一次显示机会，
+  // 丢一帧就等于玩家漏看一次提示，因此这里用可靠推送而不是 volatile。
+  const publish=()=>{channel.notify();for(const [id,socket] of io.sockets.sockets){const view=rooms.snapshot(id);if(view)socket.emit('snapshot',view);}};
   io.on('connection',socket=>{
     let requests=0,rateAt=0;
     for(const event of ['create','join','resume','select','ready','rematch','action','react','leave','presence'])socket.on(event,(payload,ack)=>{
@@ -40,7 +42,7 @@ export async function createApp({dataDir=path.join(ROOT,'runtime','data'),persis
     socket.on('ping-check',ack=>{if(typeof ack==='function')ack(Date.now());});
     socket.on('disconnect',()=>{rooms.disconnect(socket.id);publish();save();});
   });
-  let tickCount=0,last=Date.now();const timer=setInterval(()=>{const now=Date.now(),dt=Math.min(.1,(now-last)/1000);last=now;rooms.tick(dt);channel.tick();if(++tickCount%3===0&&[...rooms.rooms.values()].some(r=>r.phase==='playing'))publish(true);if(tickCount%60===0)save();},1000/30);
+  let tickCount=0,last=Date.now();const timer=setInterval(()=>{const now=Date.now(),dt=Math.min(.1,(now-last)/1000);last=now;rooms.tick(dt);channel.tick();if(++tickCount%2===0&&[...rooms.rooms.values()].some(r=>r.phase==='playing'))publish();if(tickCount%60===0)save();},1000/30);
   return {server,io,rooms,listen(port=4380,host='127.0.0.1'){return new Promise(resolve=>server.listen(port,host,()=>resolve(server.address())));},async close(){clearInterval(timer);save();channel.close();await new Promise(resolve=>io.close(resolve));db?.close();}};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){

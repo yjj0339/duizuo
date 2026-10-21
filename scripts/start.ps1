@@ -30,6 +30,10 @@ if(-not $ready){
  if(-not $ready){throw '对战服务未启动，请查看 runtime/logs。该端口可能被其他程序占用；脚本不会停止其他程序。'}
 }
 $serverNumber=if($serverProcess){$serverProcess.Id}elseif($oldState){$oldState.serverPid}else{0}
+if(-not $serverProcess){
+ $livePid=Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue|Select-Object -ExpandProperty OwningProcess -First 1
+ if($livePid){$liveProcess=Get-CimInstance Win32_Process -Filter ('ProcessId='+[int]$livePid) -ErrorAction SilentlyContinue;if($liveProcess.ExecutablePath -eq $nodeBin -and ($liveProcess.CommandLine.Contains((Join-Path $taskRoot 'server\index.js')) -or $liveProcess.CommandLine -match 'server[/\\]index\.js["\s]*$')){$serverNumber=$livePid}}
+}
 $state=[ordered]@{project=$taskRoot;port=$Port;serverPid=$serverNumber;tunnelPid=0;server=$localUrl;updatedAt=(Get-Date).ToString('o');localUrl=$localUrl;playUrl=$localUrl}
 Write-Host "本地服务已就绪：$localUrl"
 if(-not $LocalOnly){

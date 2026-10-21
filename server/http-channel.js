@@ -32,7 +32,7 @@ export function httpChannel(rooms,changed,replaced=()=>{}){
    if(name==='/api/snapshot'&&req.method==='GET'){
     const after=Number(new URL(req.url,'http://localhost').searchParams.get('after'));
     if(after===revision&&!req.destroyed)await new Promise(resolve=>{let timer;const wake=()=>{clearTimeout(timer);waiters.delete(wake);req.off('close',wake);resolve();};waiters.add(wake);req.on('close',wake);timer=setTimeout(wake,20000);});
-    const view=rooms.snapshot(id);json(res,view?{...view,revision}:{ok:false,code:'SESSION'},view?200:401);return true;
+    const view=rooms.snapshot(id);json(res,view?{...view,revision}:{ok:false,code:rooms.tokens.has(tokenFor(req))?'REPLACED':'SESSION'},view?200:401);return true;
    }
    json(res,{ok:false,message:'找不到请求'},404);
   }catch{json(res,{ok:false,message:'请求格式无效'},400);}return true;
