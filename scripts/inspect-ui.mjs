@@ -27,6 +27,7 @@ try{
  const code=await page.evaluate(()=>window.__DUO__.getSnapshot().room.code);
  const ctxB=await browser.newContext({viewport:{width:390,height:844}}),b=await ctxB.newPage();b.on('pageerror',e=>errors.push(e.message));await b.goto(base,{waitUntil:'networkidle'});await b.locator('#nickname').fill('薄荷');await b.locator('#room-code').fill(code);await b.locator('#join-form button').click();await b.waitForFunction(()=>window.__DUO__.getSnapshot()?.room.players.every(Boolean));
  await page.locator('#ready').click();await b.locator('#ready').click();await page.waitForFunction(()=>window.__DUO__.getSnapshot()?.room.phase==='playing');
+ await page.locator('#countdown').waitFor({state:'hidden'});
  await page.screenshot({path:new URL('online-gomoku.png',dir).pathname.replace(/^\//,''),fullPage:true});
  results.push({name:'two actual browser clients join and start',ok:await b.locator('#play-screen').isVisible()});
  await page.evaluate(()=>window.__DUO__.send({type:'place',index:112}));await b.waitForTimeout(300);
@@ -36,4 +37,4 @@ try{
  results.push({name:'both browser clients show result',ok:await page.locator('#game-result').isVisible()&&await b.locator('#game-result').isVisible()});
  await ctxB.close();await ctx.close();
 }finally{await browser.close();}
-const report={results,errors};await writeFile(new URL('ui-inspection.json',dir),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(errors.length||results.some(r=>!r.ok))process.exitCode=1;
+const report={results,errors};await writeFile(new URL('ui-inspection.json',dir),JSON.stringify(report,null,2));console.log(JSON.stringify({checks:results.length,failures:results.filter(r=>!r.ok),errors},null,2));if(errors.length||results.some(r=>!r.ok))process.exitCode=1;

@@ -2,8 +2,8 @@ import { randomInt, randomBytes } from 'node:crypto';
 const fail=(message,code='INVALID')=>({ok:false,message,code});
 const safeName=v=>typeof v==='string'?v.trim().replace(/[\u0000-\u001f\u007f<>]/g,'').slice(0,18):'';
 export class Rooms {
-  constructor({engines,clock=Date.now,persist=()=>{}}) {
-    this.engines=engines;this.clock=clock;this.persist=persist;
+  constructor({engines,clock=Date.now,persist=()=>{},countdownMs=3000}) {
+    this.engines=engines;this.clock=clock;this.persist=persist;this.countdownMs=countdownMs;
     this.rooms=new Map();this.connections=new Map();this.tokens=new Map();
   }
   handle(event,id,payload={}) {
@@ -60,6 +60,7 @@ export class Rooms {
     }
     if(event==='action') {
       if(room.phase!=='playing'||!room.game)return fail('等待双方准备后开始');
+      if(now<room.startedAt)return fail('双方就位，倒计时后开始','COUNTDOWN');
       if(!Number.isSafeInteger(payload.seq)||payload.seq<=p.lastSeq)return fail('这次操作已处理，请重试','DUPLICATE');
       const a=payload.action;if(!a||typeof a!=='object'||Array.isArray(a)||typeof a.type!=='string'||JSON.stringify(a).length>4096)return fail('操作无效');
       if(p.rateAt!==Math.floor(now/1000)){p.rateAt=Math.floor(now/1000);p.rateCount=0;}if(++p.rateCount>120)return fail('操作过快，请稍等');
@@ -75,7 +76,7 @@ export class Rooms {
     room.players[slot]=p;room.touchedAt=now;const s={room,slot,participant:p};this.connections.set(id,s);this.tokens.set(token,s);return this.identity(s);
   }
   identity(s){return {ok:true,code:s.room.code,player:s.slot,token:s.participant.token,nextSeq:s.participant.lastSeq+1};}
-  start(room,now){room.game=this.engines[room.gameId].create(randomInt(1,0xffffffff),now);room.phase='playing';room.recorded=false;room.startedAt=now;room.players.forEach(x=>x.ready=false);}
+  start(room,now){const start=now+this.countdownMs;room.game=this.engines[room.gameId].create(randomInt(1,0xffffffff),start);room.phase='playing';room.recorded=false;room.startedAt=start;room.players.forEach(x=>x.ready=false);}
   finish(room,now){
     if(room.recorded)return;room.recorded=true;room.phase='finished';room.touchedAt=now;
     const g=room.game,winner=g.winner;if(winner===0||winner===1)room.series.scores[winner]++;else{room.series.scores[0]+=.5;room.series.scores[1]+=.5;}
@@ -97,6 +98,7 @@ export class Rooms {
     const now=this.clock();for(const room of this.rooms.values()){
       if(!room.players.some(x=>x?.connected)&&now-room.touchedAt>3600000){room.players.forEach(p=>{if(p)this.tokens.delete(p.token);});this.rooms.delete(room.code);continue;}
       if(room.phase!=='playing'||!room.game)continue;
+      if(now<room.startedAt)continue;
       const expired=room.players.map(p=>!p||(!p.connected&&p.disconnectedAt!==null&&now-p.disconnectedAt>60000));
       if(expired.some(Boolean)){room.game.status='finished';room.game.winner=expired.every(Boolean)?-1:expired[0]?1:0;room.game.message='断线超过 60 秒，本局结束';}
       else try{this.engines[room.gameId].tick?.(room.game,dt,now);}catch(e){console.error('Game tick failed:',room.gameId,e.message);room.game.status='finished';room.game.winner=-1;room.game.message='本局异常结束，请再来一局';}

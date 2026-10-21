@@ -8,7 +8,7 @@ const request=(socket,event,payload={})=>new Promise((resolve,reject)=>socket.ti
 async function connect(url){const s=io(url,{transports:['websocket'],forceNew:true,reconnection:false});await new Promise((resolve,reject)=>{s.once('connect',resolve);s.once('connect_error',reject);});s.latest=null;s.on('snapshot',v=>s.latest=v);return s;}
 async function until(fn){for(let i=0;i<150;i++){if(fn())return;await delay(20);}throw new Error('snapshot condition timed out');}
 test('real WebSocket clients can start, operate and end every one of the 20 games',async t=>{
- const app=await createApp({persist:false});const address=await app.listen(0);const url=`http://127.0.0.1:${address.port}`;
+ const app=await createApp({persist:false,countdownMs:0});const address=await app.listen(0);const url=`http://127.0.0.1:${address.port}`;
  try{for(const game of catalog)await t.test(game.id,async()=>{
   const a=await connect(url),b=await connect(url);let seq=1;
   try{

@@ -9,10 +9,10 @@ import {engines} from '../shared/engines.js';
 import {catalog} from '../shared/catalog.js';
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.woff2':'font/woff2'};
-export async function createApp({dataDir=path.join(ROOT,'runtime','data'),persist=true}={}) {
+export async function createApp({dataDir=path.join(ROOT,'runtime','data'),persist=true,countdownMs=3000}={}) {
   let db=null;
   if(persist){await mkdir(dataDir,{recursive:true});db=new DatabaseSync(path.join(dataDir,'duo-play.sqlite'));db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS matches(id TEXT PRIMARY KEY, game TEXT NOT NULL, ended INTEGER NOT NULL, data TEXT NOT NULL)');}
-  const rooms=new Rooms({engines,persist:r=>db?.prepare('INSERT OR IGNORE INTO matches VALUES(?,?,?,?)').run(r.id,r.gameId,r.endedAt,JSON.stringify(r))});
+  const rooms=new Rooms({engines,countdownMs,persist:r=>db?.prepare('INSERT OR IGNORE INTO matches VALUES(?,?,?,?)').run(r.id,r.gameId,r.endedAt,JSON.stringify(r))});
   const server=http.createServer(async(req,res)=>{
     res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Access-Control-Allow-Origin','*');
     if(req.method!=='GET'&&req.method!=='HEAD'){res.writeHead(405);res.end();return;}
