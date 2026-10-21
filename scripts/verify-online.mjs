@@ -52,7 +52,7 @@ try{
   const overflow=await b.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);if(overflow)throw new Error(id+' mobile overflow');
   results.push({id,check:'mobile partner receives game without overflow',ok:true});
   if(id==='gomoku'){
-   const oldName=await b.evaluate(()=>window.__DUO__.getSnapshot().room.players[1].name);await b.reload({waitUntil:'networkidle'});await waitGame(b,id);const p=await b.evaluate(()=>window.__DUO__.getSnapshot().player);if(p!==1)throw new Error('Reconnect identity lost');results.push({id,check:'reload resumes same identity and active game',ok:true,name:oldName});
+   const oldName=await b.evaluate(()=>window.__DUO__.getSnapshot().room.players[1].name);await b.reload({waitUntil:'networkidle'});await waitGame(b,id);await Promise.all([a,b].map(p=>p.locator('#countdown').waitFor({state:'hidden'})));const p=await b.evaluate(()=>window.__DUO__.getSnapshot().player);if(p!==1)throw new Error('Reconnect identity lost');results.push({id,check:'reload resumes same identity and active game',ok:true,name:oldName});
   }
   if(['gomoku','g2048','sudoku','tanks'].includes(id))await b.screenshot({path:new URL(`../artifacts/online-${id}-mobile.png`,import.meta.url).pathname.replace(/^\//,''),fullPage:true});
   if(await a.evaluate(()=>window.__DUO__.getSnapshot().game.status!=='finished'))await a.locator('#resign').click();await Promise.all([waitGame(a,id,'finished'),waitGame(b,id,'finished')]);
