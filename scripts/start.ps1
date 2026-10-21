@@ -53,7 +53,7 @@ if(-not $LocalOnly){
   Write-Host '正在连接公网入口…'
   $tunnelProcess=Start-Process -FilePath $tunnelBin -ArgumentList @('tunnel','--no-autoupdate','--url',$localUrl,'--protocol','http2','--logfile',('"'+$tunnelLog+'"')) -WorkingDirectory $taskRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $runtimeDir "logs\tunnel-$stamp.stdout.log") -RedirectStandardError (Join-Path $runtimeDir "logs\tunnel-$stamp.stderr.log") -PassThru
   $state.tunnelPid=$tunnelProcess.Id
-  for($i=0;$i -lt 60;$i++){Start-Sleep -Milliseconds 500;if(Test-Path -LiteralPath $tunnelLog){$match=[regex]::Match((Get-Content -LiteralPath $tunnelLog -Raw),'https://[a-z0-9-]+\.trycloudflare\.com');if($match.Success){$publicUrl=$match.Value;break}};if($tunnelProcess.HasExited){break}}
+  for($i=0;$i -lt 90;$i++){Start-Sleep -Milliseconds 500;foreach($candidate in @($tunnelLog,(Join-Path $runtimeDir "logs\tunnel-$stamp.stderr.log"))){if(-not (Test-Path -LiteralPath $candidate)){continue};$text=$null;try{$text=Get-Content -LiteralPath $candidate -Raw -ErrorAction Stop}catch{continue};if(-not $text){continue};$match=[regex]::Match($text,'https://[a-z0-9-]+\.trycloudflare\.com');if($match.Success){$publicUrl=$match.Value;break}};if($publicUrl){break};if($tunnelProcess.HasExited){break}}
  }
  if($publicUrl){
   $publicReady=$false;for($i=0;$i -lt 8;$i++){try{$check=Invoke-RestMethod -Uri ($publicUrl+'/health') -TimeoutSec 5;if($check.ok){$publicReady=$true;break}}catch{};Start-Sleep -Milliseconds 700}

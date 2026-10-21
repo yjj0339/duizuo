@@ -10,6 +10,9 @@ if(-not $SkipChecks){& (Join-Path $nodeDir 'npm.cmd') test;if($LASTEXITCODE -ne 
 & (Join-Path $nodeDir 'npm.cmd') run build;if($LASTEXITCODE -ne 0){throw '构建失败，未发布'}
 Copy-Item -LiteralPath (Join-Path $taskRoot 'runtime-endpoint.json') -Destination (Join-Path $taskRoot 'dist\runtime-endpoint.json')
 $stage=Join-Path $taskRoot 'runtime\pages-stage';New-Item -ItemType Directory -Force -Path $stage|Out-Null
+# 清掉上一次的产物，避免旧哈希资源在发布分支里无限累积
+if(Test-Path -LiteralPath (Join-Path $stage 'assets')){Remove-Item -LiteralPath (Join-Path $stage 'assets') -Recurse -Force}
+foreach($stale in @('index.html','icon.svg','runtime-endpoint.json','.nojekyll')){if(Test-Path -LiteralPath (Join-Path $stage $stale)){Remove-Item -LiteralPath (Join-Path $stage $stale) -Force}}
 Copy-Item -Path (Join-Path $taskRoot 'dist\*') -Destination $stage -Recurse -Force
 [IO.File]::WriteAllText((Join-Path $stage '.nojekyll'),'')
 Set-Location -LiteralPath $stage
