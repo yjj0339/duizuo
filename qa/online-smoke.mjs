@@ -1,4 +1,4 @@
-import path from 'node:path';
+﻿import path from 'node:path';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { createApp } from '../server/index.js';
@@ -6,7 +6,7 @@ import { catalog } from '../shared/catalog.js';
 import { bots } from './bots.mjs';
 import { DuoClient, delay, waitFor } from './lib/duo-client.mjs';
 
-const SPEEDS = { simon: 4, hockey: 10, tanks: 10, bomber: 10, snake: 10, slingshot: 10, maze: 10, reaction: 10, mines: 10 };
+const SPEEDS = { simon: 2, reaction: 2, quiz: 2, hockey: 10, tanks: 10, bomber: 10, snake: 10, slingshot: 10, maze: 10 };
 const DEADLINES = { simon: 45000, hockey: 30000, tanks: 30000, maze: 30000, quiz: 30000, memory: 30000 };
 
 function accelerated(app, speed) {
@@ -108,7 +108,10 @@ async function protocolRoom(app) {
 }
 
 async function playGame(app, gameId) {
-  const { a, b } = await newRoom(app, gameId);
+  // 每款游戏用各自合理的加速倍率：实时物理类需要快，依赖"观察短暂提示"的
+  // 游戏（节奏记忆、反应力、问答）必须慢到客户端真的能看清每一帧。
+  accelerated(app, SPEEDS[gameId] || 1);
+  const { a, b, code } = await newRoom(app, gameId);
   const botState = [{}, {}];
   const counts = { ok: 0, rejected: 0 };
   let started = false;
@@ -149,6 +152,9 @@ async function playGame(app, gameId) {
     }
     if (!finished) {
       timeout = true;
+      const room = app.rooms.rooms.get(code);
+      const g = room?.game;
+      console.log(`   ↳ 现场 ${gameId}: roomPhase=${room?.phase} pausedAt=${room?.pausedAt} resumeAt=${room?.resumeAt} timeShift=${room?.timeShift} gameStatus=${g?.status} gamePhase=${g?.phase} round=${g?.round} _now=${g?._now} clock=${app.rooms.clock()} players=${JSON.stringify(room?.players?.map(p => p && ({ c: p.connected, a: p.active, away: p.awaySince })))}`);
       await a.request('leave');
       await waitFor(() => b.snapshot?.room?.phase === 'finished', 4000, '离开后结算').catch(() => {});
       finished = b.snapshot?.room?.phase === 'finished';
@@ -212,9 +218,10 @@ async function persistenceCheck() {
 }
 
 async function main() {
-  const app = accelerated(await createApp({ persist: false, countdownMs: 0 }), 20);
+  const app = await createApp({ persist: false, countdownMs: 0 });
   const address = await app.listen(0, '127.0.0.1');
   app.port = address.port;
+  accelerated(app, 1);
   try {
     await protocolRoom(app);
     for (const game of catalog) {

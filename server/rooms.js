@@ -116,8 +116,11 @@ export class Rooms {
     if(!room.players.some(Boolean)){this.rooms.delete(room.code);return;}if(room.phase==='waiting')room.players.forEach(x=>{if(x)x.ready=false;});
   }
   tick(dt){
-    const now=this.clock();for(const room of this.rooms.values()){
-      if(!room.players.some(x=>x?.connected)&&now-room.touchedAt>3600000){room.players.forEach(p=>{if(p)this.tokens.delete(p.token);});this.rooms.delete(room.code);continue;}
+    // 返回 true 表示本帧有对局刚刚结束，调用方必须立刻推送最终状态，
+    // 否则由超时或引擎判定结束的对局，客户端会永远停在"进行中"的旧快照上。
+    const now=this.clock();let changed=false;
+    for(const room of this.rooms.values()){
+      if(!room.players.some(x=>x?.connected)&&now-room.touchedAt>3600000){room.players.forEach(p=>{if(p)this.tokens.delete(p.token);});this.rooms.delete(room.code);changed=true;continue;}
       if(room.phase!=='playing'||!room.game)continue;
       const expired=room.players.map(p=>!p||(p.awaySince!=null&&now-p.awaySince>this.graceMs));
       if(expired.some(Boolean)){room.game.status='finished';room.game.winner=expired.every(Boolean)?-1:expired[0]?1:0;room.game.message='暂离超过 3 分钟，本局结束';}
@@ -126,7 +129,8 @@ export class Rooms {
         const gameNow=now-(room.timeShift||0);if(gameNow<room.startedAt)continue;
         try{this.engines[room.gameId].tick?.(room.game,dt,gameNow);}catch(e){console.error('Game tick failed:',room.gameId,e.message);room.game.status='finished';room.game.winner=-1;room.game.message='本局异常结束，请再来一局';}
       }
-      if(room.game.status==='finished')this.finish(room,now);
+      if(room.game.status==='finished'){this.finish(room,now);changed=true;}
     }
+    return changed;
   }
 }

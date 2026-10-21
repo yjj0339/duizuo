@@ -42,7 +42,7 @@ export async function createApp({dataDir=path.join(ROOT,'runtime','data'),persis
     socket.on('ping-check',ack=>{if(typeof ack==='function')ack(Date.now());});
     socket.on('disconnect',()=>{rooms.disconnect(socket.id);publish();save();});
   });
-  let tickCount=0,last=Date.now();const timer=setInterval(()=>{const now=Date.now(),dt=Math.min(.1,(now-last)/1000);last=now;rooms.tick(dt);channel.tick();if(++tickCount%2===0&&[...rooms.rooms.values()].some(r=>r.phase==='playing'))publish();if(tickCount%60===0)save();},1000/30);
+  let tickCount=0,last=Date.now();const timer=setInterval(()=>{const now=Date.now(),dt=Math.min(.1,(now-last)/1000);last=now;const settled=rooms.tick(dt);channel.tick();if(++tickCount%2===0||settled)publish();if(tickCount%60===0)save();},1000/30);
   return {server,io,rooms,listen(port=4380,host='127.0.0.1'){return new Promise(resolve=>server.listen(port,host,()=>resolve(server.address())));},async close(){clearInterval(timer);save();channel.close();await new Promise(resolve=>io.close(resolve));db?.close();}};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
