@@ -96,7 +96,7 @@ SQLite 每 2 秒及关键房间事件保存私有检查点。服务重启后可�
 | `node scripts/verify-ai-ui.mjs` | 20 款 AI 手机出招、单人存档恢复及离线运行 |
 | `node scripts/ai-playthrough.mjs` | 专用 AI 与基础测试控制器的完整对局基准 |
 
-浏览器验证依赖本机 D 盘测试工具（`D:/codexAI/.runtime/browser-tools`、`D:/codexAI/.runtime/browsers`）；Actions 工作流只运行纯 Node 规则与网络测试。
+浏览器验证依赖本机 D 盘测试工具（`D:/codexAI/.runtime/browser-tools`、`D:/codexAI/.runtime/browsers`）。
 
 验证结果见 `docs/验收记录.md`。**真实异地手机 / 蜂窝网络验证需要实际第二设备，不能由同一电脑的两个浏览器上下文替代。**
 
@@ -116,6 +116,24 @@ docs/            制作提示词、视觉规范、验收记录、引擎契约
 
 ## 发布
 
-执行 `scripts/publish.ps1`（测试 → 构建 → 推送 `gh-pages` 分支），GitHub Pages 从发布分支上线。当前 GitHub 授权没有 workflow 权限，Actions 模板保存在 `docs/pages-workflow-template.yml`。页面托管前端，联机服务运行在本机。
+页面由 GitHub Pages 托管，联机服务运行在本机。
+
+```powershell
+# 测试 → 构建 → 推送 gh-pages 分支 → 触发 Pages 重建（线上约 1 分钟内更新）
+& 'D:\codexAI\.toolchains\powershell\pwsh.exe' -NoProfile -File 'D:\codexAI\duo-play\scripts\publish.ps1'
+```
+
+只推 `gh-pages` 分支不会立刻刷新线上站点，发布脚本已自动补上 `POST /pages/builds` 触发重建。
+
+**关于 GitHub Actions 自动发布**：完整的 Actions 工作流已写好（`docs/pages-workflow-template.yml`，内容与本地 `.github/workflows/pages.yml` 一致），但当前 GitHub 授权缺少 `workflow` 作用域，GitHub 会拒绝创建或更新 `.github/workflows/` 下的文件。**经项目负责人决定，本次不启用自动发布**，改用上面的发布脚本手动发布；若日后想启用，补上作用域后执行：
+
+```bash
+gh auth refresh -h github.com -s workflow
+git add -f .github/workflows/pages.yml && git commit -m "ci: enable Pages auto publish" && git push
+```
+
+然后把 Pages 的 Source 从 `gh-pages` 分支切到 **GitHub Actions** 即可。
+
+页面只托管前端，联机服务始终运行在本机。
 
 公开仓库不包含访问令牌、隧道凭据、数据库或用户浏览器资料。
