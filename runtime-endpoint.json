@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-21T17:08:32.9440039Z",
-  "kind": "temporary-tunnel",
-  "server": "https://tire-habitat-private-david.trycloudflare.com"
+    "updatedAt":  "2026-10-21T17:08:22.3615728Z",
+    "server":  "https://tire-habitat-private-david.trycloudflare.com",
+    "kind":  "temporary-tunnel"
 }
