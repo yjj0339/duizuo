@@ -1,4 +1,4 @@
-/* DUO PLAY · 可视化验收
+/* DUIZUO · 可视化验收
    逐款打开 20 款游戏，桌面 + 移动两种视口截图，并自动检测：
    1) 控制台报错
    2) 横向溢出（内容宽于视口）
@@ -74,7 +74,7 @@ async function auditViewport(browser, label, viewport, isMobile) {
   }));
 
   for (const id of GAMES) {
-    await page.evaluate(g => window.__DUO__.openLocal(g), id);
+    await page.evaluate(g => window.__DUIZUO__.openLocal(g), id);
     await page.waitForTimeout(520);
     await page.screenshot({ path: path.join(OUT, `${label}-${id}.png`) });
     const overflow = await page.evaluate(() => {
@@ -119,7 +119,7 @@ async function main() {
     }
   }
   const report = [
-    `DUO PLAY 可视化验收 · ${new Date().toISOString()}`,
+    `DUIZUO 可视化验收 · ${new Date().toISOString()}`,
     `视口: desktop 1440x1000 / m390 390x844 / m320 320x568`,
     `游戏数量: ${GAMES.length}`,
     ``,

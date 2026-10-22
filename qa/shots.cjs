@@ -18,7 +18,7 @@ async function main() {
 
   const games = ['gomoku', 'fleet', 'quiz', 'typing', 'simon', 'hockey', 'bomber', 'sudoku', 'tetris', 'slingshot'];
   for (const id of games) {
-    await page.evaluate(gameId => window.__DUO__.openLocal(gameId), id);
+    await page.evaluate(gameId => window.__DUIZUO__.openLocal(gameId), id);
     await page.waitForTimeout(650);
     await page.screenshot({ path: path.join(OUT, `game-${id}.png`) });
     await page.evaluate(() => document.querySelector('#back').click());
@@ -34,7 +34,7 @@ async function main() {
     await mobile.goto(BASE, { waitUntil: 'networkidle' });
     await mobile.waitForTimeout(600);
     await mobile.screenshot({ path: path.join(OUT, `lobby-mobile-${label}.png`), fullPage: false });
-    await mobile.evaluate(() => window.__DUO__.openLocal('gomoku'));
+    await mobile.evaluate(() => window.__DUIZUO__.openLocal('gomoku'));
     await mobile.waitForTimeout(600);
     await mobile.screenshot({ path: path.join(OUT, `game-mobile-${label}.png`) });
     await context.close();

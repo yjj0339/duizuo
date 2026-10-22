@@ -203,7 +203,7 @@ async function persistenceCheck() {
     await finish(a, b);
     check('打字对局写入结算快照', a.snapshot.room.phase === 'finished' && a.snapshot.game.winner === 0);
     const { DatabaseSync } = await import('node:sqlite');
-    const db = new DatabaseSync(path.join(dir, 'duo-play.sqlite'));
+    const db = new DatabaseSync(path.join(dir, 'duizuo.sqlite'));
     const row = db.prepare('SELECT COUNT(*) AS n FROM matches').get();
     db.close();
     check('SQLite 保存了已结束对局', row.n >= 1, `rows=${row.n}`);

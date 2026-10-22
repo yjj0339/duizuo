@@ -12,14 +12,14 @@ Copy-Item -LiteralPath (Join-Path $taskRoot 'runtime-endpoint.json') -Destinatio
 $stage=Join-Path $taskRoot 'runtime\pages-stage';New-Item -ItemType Directory -Force -Path $stage|Out-Null
 $stage=Join-Path $taskRoot 'runtime\pages-stage';New-Item -ItemType Directory -Force -Path $stage|Out-Null
 Set-Location -LiteralPath $stage
-if(-not (Test-Path -LiteralPath (Join-Path $stage '.git'))){& $gitBin init -b gh-pages;& $gitBin config user.name 'DUO PLAY Publisher';& $gitBin config user.email 'yjj0339@users.noreply.github.com';& $gitBin remote add origin 'https://github.com/yjj0339/duo-play.git'}else{& $gitBin fetch origin gh-pages 2>$null;if($LASTEXITCODE -eq 0){& $gitBin reset --hard origin/gh-pages|Out-Null}}
+if(-not (Test-Path -LiteralPath (Join-Path $stage '.git'))){& $gitBin init -b gh-pages;& $gitBin config user.name 'DUIZUO Publisher';& $gitBin config user.email 'yjj0339@users.noreply.github.com';& $gitBin remote add origin 'https://github.com/yjj0339/duizuo.git'}else{& $gitBin fetch origin gh-pages 2>$null;if($LASTEXITCODE -eq 0){& $gitBin reset --hard origin/gh-pages|Out-Null}}
 if(Test-Path -LiteralPath (Join-Path $stage 'assets')){Remove-Item -LiteralPath (Join-Path $stage 'assets') -Recurse -Force}
 foreach($stale in @('index.html','icon.svg','runtime-endpoint.json','.nojekyll')){if(Test-Path -LiteralPath (Join-Path $stage $stale)){Remove-Item -LiteralPath (Join-Path $stage $stale) -Force}}
 Copy-Item -Path (Join-Path $taskRoot 'dist\*') -Destination $stage -Recurse -Force
 [IO.File]::WriteAllText((Join-Path $stage '.nojekyll'),'')
 & $gitBin add -A;if($LASTEXITCODE -ne 0){throw '页面暂存失败'}
 & $gitBin diff --cached --quiet
-if($LASTEXITCODE -ne 0){& $gitBin commit -m ('Publish DUO PLAY '+(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'));if($LASTEXITCODE -ne 0){throw '页面提交失败'}}
+if($LASTEXITCODE -ne 0){& $gitBin commit -m ('Publish DUIZUO '+(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'));if($LASTEXITCODE -ne 0){throw '页面提交失败'}}
 $pushed=$false
 for($attempt=0;$attempt -lt 3;$attempt++){
  & $gitBin -c http.version=HTTP/1.1 -c http.postBuffer=5242880 push -u origin gh-pages
@@ -29,13 +29,13 @@ for($attempt=0;$attempt -lt 3;$attempt++){
  if($attempt -lt 2){Write-Host 'GitHub 连接中断，正在重试页面推送…';Start-Sleep -Seconds 2}
 }
 if(-not $pushed){throw '页面推送失败'}
-Write-Host '已推送 GitHub Pages 发布分支：https://yjj0339.github.io/duo-play/'
+Write-Host '已推送 GitHub Pages 发布分支：https://yjj0339.github.io/duizuo/'
 # 仅推分支不会立刻刷新线上站点，需要显式触发一次 Pages 重建
 $ghBin='D:\codexAI\.runtime\github-cli\gh.exe'
 if(Test-Path -LiteralPath $ghBin){
  $env:GH_CONFIG_DIR='D:\codexAI\.runtime\github-config'
  try{
-  & $ghBin api -X POST repos/yjj0339/duo-play/pages/builds | Out-Null
+  & $ghBin api -X POST repos/yjj0339/duizuo/pages/builds | Out-Null
   if($LASTEXITCODE -eq 0){Write-Host '已触发 GitHub Pages 重建，线上页面约 1 分钟内更新。'}
   else{Write-Warning 'Pages 重建未触发，线上可能仍是旧版本，可用 GitHub 页面设置手动重建。'}
  }catch{Write-Warning 'Pages 重建未触发，线上可能仍是旧版本。'}

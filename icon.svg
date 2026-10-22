@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="DUO PLAY">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="对座 DUIZUO">
   <defs>
     <linearGradient id="p" x1="0" y1="0" x2="0.4" y2="1">
       <stop offset="0" stop-color="#FF9E8A"/><stop offset="1" stop-color="#FF6F58"/>
@@ -12,16 +12,20 @@
   </defs>
   <rect width="64" height="64" rx="18" fill="url(#bg)"/>
   <rect x="1.5" y="1.5" width="61" height="61" rx="16.5" fill="none" stroke="#E4E8F2"/>
+  <!-- 桌面：两人之间的一道分隔 -->
+  <path d="M32 12v40" stroke="#E9EDF6" stroke-width="3" stroke-linecap="round"/>
+  <!-- 左座：面向右 -->
   <g>
-    <rect x="12" y="18" width="19" height="28" rx="9.5" fill="url(#p)"/>
-    <circle cx="18" cy="29" r="2.3" fill="#fff"/>
-    <circle cx="26" cy="29" r="2.3" fill="#fff"/>
-    <path d="M18 36.5q4 3.6 8 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <circle cx="19" cy="26" r="11" fill="url(#p)"/>
+    <circle cx="15" cy="25" r="1.9" fill="#fff"/>
+    <circle cx="23" cy="25" r="1.9" fill="#fff"/>
+    <path d="M15 31q4 3.4 8 0" stroke="#fff" stroke-width="2.1" fill="none" stroke-linecap="round"/>
   </g>
+  <!-- 右座：面向左 -->
   <g>
-    <rect x="33" y="18" width="19" height="28" rx="9.5" fill="url(#m)"/>
-    <circle cx="39" cy="29" r="2.3" fill="#fff"/>
-    <circle cx="47" cy="29" r="2.3" fill="#fff"/>
-    <path d="M39 36.5q4 3.6 8 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <circle cx="45" cy="38" r="11" fill="url(#m)"/>
+    <circle cx="41" cy="37" r="1.9" fill="#fff"/>
+    <circle cx="49" cy="37" r="1.9" fill="#fff"/>
+    <path d="M41 43q4 3.4 8 0" stroke="#fff" stroke-width="2.1" fill="none" stroke-linecap="round"/>
   </g>
 </svg>

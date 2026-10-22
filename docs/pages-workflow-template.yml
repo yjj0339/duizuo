@@ -1,4 +1,4 @@
-name: Publish DUO PLAY
+name: Publish DUIZUO
 
 on:
   push:

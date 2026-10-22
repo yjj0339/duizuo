@@ -22,7 +22,7 @@ foreach($kind in @('tunnel','server')){
   if($valid -and -not $process.CommandLine.Contains((Join-Path $taskRoot 'server\index.js'))){
    $bound=!!(Get-NetTCPConnection -State Listen -LocalPort $state.port -ErrorAction SilentlyContinue|Where-Object OwningProcess -eq ([int]$number))
    $check=$null;try{$check=Invoke-RestMethod -Uri ($state.localUrl+'/health') -TimeoutSec 2}catch{}
-   $valid=$bound -and $check -and $check.name -eq 'DUO PLAY'
+   $valid=$bound -and $check -and $check.name -eq 'DUIZUO'
   }
   if(-not $valid){
    $livePid=Get-NetTCPConnection -State Listen -LocalPort $state.port -ErrorAction SilentlyContinue|Select-Object -ExpandProperty OwningProcess -First 1

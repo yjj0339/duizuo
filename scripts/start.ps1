@@ -21,12 +21,12 @@ elseif(-not (Test-Path -LiteralPath (Join-Path $taskRoot 'dist\index.html'))){th
 $localUrl="http://127.0.0.1:$Port"
 $stateFile=Join-Path $runtimeDir 'state.json'
 $oldState=$null;if(Test-Path -LiteralPath $stateFile){try{$oldState=Get-Content -LiteralPath $stateFile -Raw|ConvertFrom-Json}catch{}}
-$ready=$false;try{$health=Invoke-RestMethod -Uri "$localUrl/health" -TimeoutSec 2;if($health.ok -and $health.name -eq 'DUO PLAY' -and $health.version -eq '1.0.0'){throw '该端口运行旧版服务，请使用新版默认 4390 端口。旧服务不会被自动停止。'};$ready=$health.ok -and $health.name -eq 'DUO PLAY' -and $health.version -eq '2.0.0'}catch{if($_.Exception.Message -like '*旧版服务*'){throw}}
+$ready=$false;try{$health=Invoke-RestMethod -Uri "$localUrl/health" -TimeoutSec 2;if($health.ok -and $health.name -eq 'DUIZUO' -and $health.version -eq '1.0.0'){throw '该端口运行旧版服务，请使用新版默认 4390 端口。旧服务不会被自动停止。'};$ready=$health.ok -and $health.name -eq 'DUIZUO' -and $health.version -eq '2.0.0'}catch{if($_.Exception.Message -like '*旧版服务*'){throw}}
 $serverProcess=$null
 if(-not $ready){
  $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
  $serverProcess=Start-Process -FilePath $nodeBin -ArgumentList @(('"'+(Join-Path $taskRoot 'server\index.js')+'"')) -WorkingDirectory $taskRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $runtimeDir "logs\server-$stamp.log") -RedirectStandardError (Join-Path $runtimeDir "logs\server-$stamp.err.log") -PassThru
- for($i=0;$i -lt 30;$i++){Start-Sleep -Milliseconds 500;try{$health=Invoke-RestMethod -Uri "$localUrl/health" -TimeoutSec 2;if($health.ok -and $health.name -eq 'DUO PLAY'){$ready=$true;break}}catch{};if($serverProcess.HasExited){break}}
+ for($i=0;$i -lt 30;$i++){Start-Sleep -Milliseconds 500;try{$health=Invoke-RestMethod -Uri "$localUrl/health" -TimeoutSec 2;if($health.ok -and $health.name -eq 'DUIZUO'){$ready=$true;break}}catch{};if($serverProcess.HasExited){break}}
  if(-not $ready){throw '对战服务未启动，请查看 runtime/logs。该端口可能被其他程序占用；脚本不会停止其他程序。'}
 }
 $serverNumber=if($serverProcess){$serverProcess.Id}elseif($oldState){$oldState.serverPid}else{0}
@@ -58,19 +58,19 @@ if(-not $LocalOnly){
  if($publicUrl){
   $publicReady=$false;for($i=0;$i -lt 30;$i++){try{$check=Invoke-RestMethod -Uri ($publicUrl+'/health') -TimeoutSec 5;if($check.ok){$publicReady=$true;break}}catch{};Start-Sleep -Milliseconds 1000}
   if($publicReady){
-   $state.server=$publicUrl;$state.playUrl='https://yjj0339.github.io/duo-play/?server='+[Uri]::EscapeDataString($publicUrl)
+   $state.server=$publicUrl;$state.playUrl='https://yjj0339.github.io/duizuo/?server='+[Uri]::EscapeDataString($publicUrl)
    $endpoint=@{server=$publicUrl;kind='temporary-tunnel';updatedAt=(Get-Date).ToUniversalTime().ToString('o')}|ConvertTo-Json
    Set-Content -LiteralPath (Join-Path $runtimeDir 'endpoint.json') -Value $endpoint -Encoding utf8
    Set-Content -LiteralPath (Join-Path $taskRoot 'dist\runtime-endpoint.json') -Value $endpoint -Encoding utf8
    if(Test-Path -LiteralPath $ghBin){
     try{
-     $remoteText=& $ghBin api repos/yjj0339/duo-play/contents/runtime-endpoint.json 2>$null
+     $remoteText=& $ghBin api repos/yjj0339/duizuo/contents/runtime-endpoint.json 2>$null
      if($LASTEXITCODE -eq 0){
       $remote=$remoteText|ConvertFrom-Json;$current=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($remote.content -replace '\s','')))|ConvertFrom-Json
       if($current.server -ne $publicUrl){
        $body=@{message='chore: update public multiplayer endpoint';sha=$remote.sha;content=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($endpoint))}|ConvertTo-Json -Compress
        $bodyFile=Join-Path $runtimeDir 'temp\endpoint-request.json';[IO.File]::WriteAllText($bodyFile,$body,[Text.UTF8Encoding]::new($false))
-       & $ghBin api repos/yjj0339/duo-play/contents/runtime-endpoint.json --method PUT --input $bodyFile --jq '.commit.sha' | Out-Null
+       & $ghBin api repos/yjj0339/duizuo/contents/runtime-endpoint.json --method PUT --input $bodyFile --jq '.commit.sha' | Out-Null
        if($LASTEXITCODE -ne 0){Write-Warning '公开地址未自动同步；请使用下面带服务器参数的链接。'}else{Write-Host 'GitHub 页面已同步新的服务器地址。'}
       }
      }else{Write-Warning 'GitHub 地址未同步；带服务器参数的邀请链接仍可使用。'}
@@ -79,19 +79,19 @@ if(-not $LocalOnly){
    Write-Host "公网服务已验证：$publicUrl"
   }else{
     $state.server=$publicUrl
-    $state.playUrl='https://yjj0339.github.io/duo-play/?server='+[Uri]::EscapeDataString($publicUrl)
+    $state.playUrl='https://yjj0339.github.io/duizuo/?server='+[Uri]::EscapeDataString($publicUrl)
     $endpoint=@{server=$publicUrl;kind='temporary-tunnel';updatedAt=(Get-Date).ToUniversalTime().ToString('o')}|ConvertTo-Json
     Set-Content -LiteralPath (Join-Path $runtimeDir 'endpoint.json') -Value $endpoint -Encoding utf8
     Set-Content -LiteralPath (Join-Path $taskRoot 'dist\runtime-endpoint.json') -Value $endpoint -Encoding utf8
     if(Test-Path -LiteralPath $ghBin){
      try{
-      $remoteText=& $ghBin api repos/yjj0339/duo-play/contents/runtime-endpoint.json 2>$null
+      $remoteText=& $ghBin api repos/yjj0339/duizuo/contents/runtime-endpoint.json 2>$null
       if($LASTEXITCODE -eq 0){
        $remote=$remoteText|ConvertFrom-Json;$current=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($remote.content -replace '\s','')))|ConvertFrom-Json
        if($current.server -ne $publicUrl){
         $body=@{message='chore: update public multiplayer endpoint';sha=$remote.sha;content=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($endpoint))}|ConvertTo-Json -Compress
         $bodyFile=Join-Path $runtimeDir 'temp\endpoint-request.json';[IO.File]::WriteAllText($bodyFile,$body,[Text.UTF8Encoding]::new($false))
-        & $ghBin api repos/yjj0339/duo-play/contents/runtime-endpoint.json --method PUT --input $bodyFile --jq '.commit.sha' | Out-Null
+        & $ghBin api repos/yjj0339/duizuo/contents/runtime-endpoint.json --method PUT --input $bodyFile --jq '.commit.sha' | Out-Null
         if($LASTEXITCODE -ne 0){Write-Warning '公开地址未自动同步；请使用下面带服务器参数的链接。'}else{Write-Host 'GitHub 页面已同步新的服务器地址。'}
        }
       }else{Write-Warning 'GitHub 地址未同步；带服务器参数的邀请链接仍可使用。'}
@@ -103,5 +103,5 @@ if(-not $LocalOnly){
 }
 $state|ConvertTo-Json|Set-Content -LiteralPath $stateFile -Encoding utf8
 Write-Host "游玩链接：$($state.playUrl)"
-Write-Host '保持电脑、对战服务和隧道运行。停止请双击“停止双人游乐场.cmd”。'
+Write-Host '保持电脑、对战服务和隧道运行。停止请双击“停止面对面的小游戏.cmd”。'
 if(-not $NoBrowser){Start-Process -FilePath 'D:\codexAI\.runtime\browsers\chromium-1234\chrome-win64\chrome.exe' -ArgumentList @('--user-data-dir='+('"'+(Join-Path $runtimeDir 'browser-profile')+'"'),('--app='+$state.playUrl)) -WorkingDirectory $taskRoot -WindowStyle Hidden}

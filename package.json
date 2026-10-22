@@ -1,9 +1,9 @@
 {
-  "name": "duo-play",
+  "name": "duizuo",
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "20 complete two-player games with a local authoritative multiplayer server",
+  "description": "对座 DUIZUO · 20 款面对面的小游戏，一个本地权威的多人对战服务",
   "scripts": {
     "dev": "node server/index.js",
     "start": "node server/index.js",

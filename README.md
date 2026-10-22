@@ -1,8 +1,8 @@
-# DUO PLAY · 双人游乐场
+# DUIZUO · 面对面的小游戏
 
 20 款小游戏，一个双人房间。支持手机 / 电脑、链接邀请、3 分钟断线保护、两种独立联机通道、单人专用 AI、三档水平、自动存档、今日同种子挑战、3/5 场巡回赛与战绩。
 
-在线页面：**https://yjj0339.github.io/duo-play/**
+在线页面：**https://yjj0339.github.io/duizuo/**
 
 视觉系统「云间糖屋」：云白底色、蜜桃粉（玩家一）× 薄荷绿（玩家二）双人配色、淡紫点缀，全站浅色毛玻璃。
 
@@ -35,7 +35,7 @@
 
 ## 两个人怎么玩
 
-1. 房主在自己的电脑上双击 `启动双人游乐场.cmd`，等待本机服务和公网入口就绪。
+1. 房主在自己的电脑上双击 `启动面对面的小游戏.cmd`，等待本机服务和公网入口就绪。
 2. 打开上述在线页面，输入昵称、选择游戏、创建房间。
 3. 复制房间里的邀请链接发给搭档，或告诉对方六位房间码；邀请链接自动携带服务器地址。
 4. 两人都点击准备，经过 3 秒同步倒计时后开局。每款游戏内可展开玩法说明；结算后可再来一局或返回房间换游戏。
@@ -63,19 +63,19 @@ SQLite 每 2 秒及关键房间事件保存私有检查点。服务重启后可�
 
 ## D 盘运行
 
-本机项目：`D:/codexAI/duo-play`。Node 使用 `D:/codexAI/.toolchains/emsdk/node/24.19.0_64bit/node.exe`，所有项目依赖、临时文件、数据库、下载、浏览器资料和日志都保留在 D:。
+本机项目：`D:/codexAI/duizuo`。Node 使用 `D:/codexAI/.toolchains/emsdk/node/24.19.0_64bit/node.exe`，所有项目依赖、临时文件、数据库、下载、浏览器资料和日志都保留在 D:。
 
 ```powershell
-& 'D:\codexAI\.toolchains\powershell\pwsh.exe' -NoProfile -File 'D:\codexAI\duo-play\scripts\start.ps1'
+& 'D:\codexAI\.toolchains\powershell\pwsh.exe' -NoProfile -File 'D:\codexAI\duizuo\scripts\start.ps1'
 ```
 
-停止：双击 `停止双人游乐场.cmd`。脚本仅停止记录在本项目状态文件内、且命令行匹配本项目的 Node / 隧道进程。
+停止：双击 `停止面对面的小游戏.cmd`。脚本仅停止记录在本项目状态文件内、且命令行匹配本项目的 Node / 隧道进程。
 
 `runtime/` 包含私有运行资料，不纳入 Git：
 
 - `runtime/bin/cloudflared.exe`：公网隧道执行程序
 - `runtime/logs/`：服务与隧道日志
-- `runtime/data/duo-play.sqlite`：对战记录及进行中房间的私有检查点
+- `runtime/data/duizuo.sqlite`：对战记录及进行中房间的私有检查点
 - `runtime/state.json`：本项目启动的进程与当前地址
 - `runtime/temp/`：临时文件
 
@@ -120,7 +120,7 @@ docs/            制作提示词、视觉规范、验收记录、引擎契约
 
 ```powershell
 # 测试 → 构建 → 推送 gh-pages 分支 → 触发 Pages 重建（线上约 1 分钟内更新）
-& 'D:\codexAI\.toolchains\powershell\pwsh.exe' -NoProfile -File 'D:\codexAI\duo-play\scripts\publish.ps1'
+& 'D:\codexAI\.toolchains\powershell\pwsh.exe' -NoProfile -File 'D:\codexAI\duizuo\scripts\publish.ps1'
 ```
 
 只推 `gh-pages` 分支不会立刻刷新线上站点，发布脚本已自动补上 `POST /pages/builds` 触发重建。

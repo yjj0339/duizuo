@@ -16,9 +16,9 @@ const mode = process.argv[2] || 'inspect';
 
 if (mode === 'inspect') {
   console.log('--- pages config ---');
-  console.log(api(['repos/yjj0339/duo-play/pages']));
+  console.log(api(['repos/yjj0339/duizuo/pages']));
   console.log('--- built-in workflow runs ---');
-  const runs = api(['repos/yjj0339/duo-play/actions/workflows/391801731/runs?per_page=4']);
+  const runs = api(['repos/yjj0339/duizuo/actions/workflows/391801731/runs?per_page=4']);
   try {
     const data = JSON.parse(runs);
     for (const r of data.workflow_runs || []) {
@@ -26,7 +26,7 @@ if (mode === 'inspect') {
     }
   } catch { console.log(runs.slice(0, 400)); }
   console.log('--- recent deployments ---');
-  const dep = api(['repos/yjj0339/duo-play/deployments?per_page=4']);
+  const dep = api(['repos/yjj0339/duizuo/deployments?per_page=4']);
   try {
     const data = JSON.parse(dep);
     for (const d of data) console.log(`${d.created_at} ${d.sha.slice(0, 8)} ${d.ref} ${d.environment}`);
@@ -34,9 +34,9 @@ if (mode === 'inspect') {
 }
 
 if (mode === 'legacy') {
-  console.log(api(['-X', 'PUT', 'repos/yjj0339/duo-play/pages', '-f', 'build_type=legacy', '-f', 'source[branch]=gh-pages', '-f', 'source[path]=/']));
+  console.log(api(['-X', 'PUT', 'repos/yjj0339/duizuo/pages', '-f', 'build_type=legacy', '-f', 'source[branch]=gh-pages', '-f', 'source[path]=/']));
 }
 
 if (mode === 'workflow') {
-  console.log(api(['-X', 'PUT', 'repos/yjj0339/duo-play/pages', '-f', 'build_type=workflow']));
+  console.log(api(['-X', 'PUT', 'repos/yjj0339/duizuo/pages', '-f', 'build_type=workflow']));
 }

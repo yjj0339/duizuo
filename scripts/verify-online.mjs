@@ -1,9 +1,9 @@
 import {chromium} from 'file:///D:/codexAI/.runtime/browser-tools/node_modules/pwcore/index.mjs';
 import {writeFile} from 'node:fs/promises';
-const url=process.env.TEST_URL||'https://yjj0339.github.io/duo-play/';
+const url=process.env.TEST_URL||'https://yjj0339.github.io/duizuo/';
 const browser=await chromium.launch({headless:true,executablePath:'D:/codexAI/.runtime/browsers/chromium-1234/chrome-win64/chrome.exe',args:['--disk-cache-size=1','--media-cache-size=1']});
 const results=[],errors=[];
-async function waitGame(page,id,phase='playing'){await page.waitForFunction(({id,phase})=>{const s=window.__DUO__?.getSnapshot();return s?.room.gameId===id&&s.room.phase===phase;},{id,phase},{timeout:30000});}
+async function waitGame(page,id,phase='playing'){await page.waitForFunction(({id,phase})=>{const s=window.__DUIZUO__?.getSnapshot();return s?.room.gameId===id&&s.room.phase===phase;},{id,phase},{timeout:30000});}
 const evidence={
  gomoku:g=>g.board.includes(0),fleet:g=>g.targetBoard.some(n=>n!==-1),dots:g=>g.edges.includes(0),memory:g=>g.faces.some(n=>n!==null),
  hockey:g=>Math.abs(g.paddles[0].y-220)>5,tanks:g=>g.bullets.length>0,bomber:g=>g.bombs.length>0,snake:g=>g.snakes[0].dir==='down'||g.snakes[0].pending==='down',
@@ -17,18 +17,18 @@ try{
  await Promise.all([a.goto(url,{waitUntil:'networkidle'}),b.goto(url,{waitUntil:'networkidle'})]);
  for(const p of [a,b])await p.waitForSelector('#connection-label.online',{timeout:30000});
  await a.locator('#nickname').fill('桃桃');await b.locator('#nickname').fill('薄荷');await a.locator('#create').click();
- await a.waitForFunction(()=>window.__DUO__.getSnapshot()?.room.code);const code=await a.evaluate(()=>window.__DUO__.getSnapshot().room.code);
- await b.locator('#room-code').fill(code);await b.locator('#join-form button').click();await b.waitForFunction(()=>window.__DUO__.getSnapshot()?.room.players.every(Boolean));
- const ids=await a.evaluate(()=>window.__DUO__.catalog.map(g=>g.id));
+ await a.waitForFunction(()=>window.__DUIZUO__.getSnapshot()?.room.code);const code=await a.evaluate(()=>window.__DUIZUO__.getSnapshot().room.code);
+ await b.locator('#room-code').fill(code);await b.locator('#join-form button').click();await b.waitForFunction(()=>window.__DUIZUO__.getSnapshot()?.room.players.every(Boolean));
+ const ids=await a.evaluate(()=>window.__DUIZUO__.catalog.map(g=>g.id));
  for(const id of ids){
   console.log('Checking '+id);
   await a.locator(`[data-game="${id}"]`).click();
-  await a.waitForFunction(id=>{const s=window.__DUO__.getSnapshot();return s?.room.gameId===id&&s.room.phase==='waiting';},id);
-  await b.waitForFunction(id=>window.__DUO__.getSnapshot()?.room.gameId===id,id);
+  await a.waitForFunction(id=>{const s=window.__DUIZUO__.getSnapshot();return s?.room.gameId===id&&s.room.phase==='waiting';},id);
+  await b.waitForFunction(id=>window.__DUIZUO__.getSnapshot()?.room.gameId===id,id);
   await a.locator('#ready').click();await b.locator('#ready').click();await Promise.all([waitGame(a,id),waitGame(b,id)]);await a.locator('#countdown').waitFor({state:'hidden'});
   switch(id){
    case 'gomoku':await a.locator('.board-gomoku-grid button').nth(112).click();await a.locator('.board-precision > button').click();break;
-   case 'fleet':await a.getByRole('button',{name:'布阵完成',exact:true}).click();await b.getByRole('button',{name:'布阵完成',exact:true}).click();await a.waitForFunction(()=>window.__DUO__.getSnapshot().game.phase==='battle');await a.locator('.board-sea-panel').nth(1).locator('.board-precision > button').click();break;
+   case 'fleet':await a.getByRole('button',{name:'布阵完成',exact:true}).click();await b.getByRole('button',{name:'布阵完成',exact:true}).click();await a.waitForFunction(()=>window.__DUIZUO__.getSnapshot().game.phase==='battle');await a.locator('.board-sea-panel').nth(1).locator('.board-precision > button').click();break;
    case 'dots':await a.locator('.board-edge').first().click();break;
    case 'memory':await a.locator('.board-memory-grid button').first().click();break;
    case 'hockey':{const box=await a.locator('canvas').boundingBox();await a.mouse.move(box.x+box.width*.2,box.y+box.height*.25);await a.mouse.down();await a.mouse.move(box.x+box.width*.22,box.y+box.height*.3,{steps:5});await a.mouse.up();break;}
@@ -44,18 +44,18 @@ try{
    case 'rps':await a.locator('.board-rps-choices button').first().click();break;
    case 'reaction':await a.locator('.puzzle-signal').click();break;
    case 'mines':await a.locator('.board-precision > button').click();break;
-   case 'typing':{const text=await a.evaluate(()=>window.__DUO__.getSnapshot().game.text.slice(0,3));await a.locator('.puzzle-typing-input').fill(text);await a.waitForTimeout(400);if(await a.locator('.puzzle-typing-input').inputValue()!==text)throw new Error('Typing focus/text lost');break;}
-   case 'simon':await a.waitForFunction(()=>window.__DUO__.getSnapshot().game.phase==='input');await a.locator('.puzzle-note').first().click();break;
+   case 'typing':{const text=await a.evaluate(()=>window.__DUIZUO__.getSnapshot().game.text.slice(0,3));await a.locator('.puzzle-typing-input').fill(text);await a.waitForTimeout(400);if(await a.locator('.puzzle-typing-input').inputValue()!==text)throw new Error('Typing focus/text lost');break;}
+   case 'simon':await a.waitForFunction(()=>window.__DUIZUO__.getSnapshot().game.phase==='input');await a.locator('.puzzle-note').first().click();break;
   }
-  await a.waitForFunction(source=>{const check=(0,eval)('('+source+')');return check(window.__DUO__.getSnapshot().game);},evidence[id].toString(),{timeout:10000});
+  await a.waitForFunction(source=>{const check=(0,eval)('('+source+')');return check(window.__DUIZUO__.getSnapshot().game);},evidence[id].toString(),{timeout:10000});
   results.push({id,check:'actual desktop control accepted by public server',ok:true});
   const overflow=await b.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);if(overflow)throw new Error(id+' mobile overflow');
   results.push({id,check:'mobile partner receives game without overflow',ok:true});
   if(id==='gomoku'){
-   const oldName=await b.evaluate(()=>window.__DUO__.getSnapshot().room.players[1].name);await b.reload({waitUntil:'networkidle'});await waitGame(b,id);await Promise.all([a,b].map(p=>p.locator('#countdown').waitFor({state:'hidden'})));const p=await b.evaluate(()=>window.__DUO__.getSnapshot().player);if(p!==1)throw new Error('Reconnect identity lost');results.push({id,check:'reload resumes same identity and active game',ok:true,name:oldName});
+   const oldName=await b.evaluate(()=>window.__DUIZUO__.getSnapshot().room.players[1].name);await b.reload({waitUntil:'networkidle'});await waitGame(b,id);await Promise.all([a,b].map(p=>p.locator('#countdown').waitFor({state:'hidden'})));const p=await b.evaluate(()=>window.__DUIZUO__.getSnapshot().player);if(p!==1)throw new Error('Reconnect identity lost');results.push({id,check:'reload resumes same identity and active game',ok:true,name:oldName});
   }
   if(['gomoku','g2048','sudoku','tanks'].includes(id))await b.screenshot({path:new URL(`../artifacts/online-${id}-mobile.png`,import.meta.url).pathname.replace(/^\//,''),fullPage:true});
-  if(await a.evaluate(()=>window.__DUO__.getSnapshot().game.status!=='finished'))await a.locator('#resign').click();await Promise.all([waitGame(a,id,'finished'),waitGame(b,id,'finished')]);
+  if(await a.evaluate(()=>window.__DUIZUO__.getSnapshot().game.status!=='finished'))await a.locator('#resign').click();await Promise.all([waitGame(a,id,'finished'),waitGame(b,id,'finished')]);
   if(!await b.locator('#game-result').isVisible())throw new Error('Partner result is not visible');
   results.push({id,check:'both clients reach result',ok:true});
   await a.locator('#result-lobby').click();await a.waitForTimeout(220);if(!await a.locator('#lobby').isVisible())throw new Error('Return to lobby was overwritten by a snapshot');

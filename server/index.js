@@ -12,7 +12,7 @@ const ROOT=fileURLToPath(new URL('../',import.meta.url));
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.woff2':'font/woff2'};
 export async function createApp({dataDir=path.join(ROOT,'runtime','data'),persist=true,countdownMs=3000}={}) {
   let db=null;
-  if(persist){await mkdir(dataDir,{recursive:true});db=new DatabaseSync(path.join(dataDir,'duo-play.sqlite'));db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS matches(id TEXT PRIMARY KEY, game TEXT NOT NULL, ended INTEGER NOT NULL, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS active_state(id INTEGER PRIMARY KEY, data TEXT NOT NULL)');}
+  if(persist){await mkdir(dataDir,{recursive:true});db=new DatabaseSync(path.join(dataDir,'duizuo.sqlite'));db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS matches(id TEXT PRIMARY KEY, game TEXT NOT NULL, ended INTEGER NOT NULL, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS active_state(id INTEGER PRIMARY KEY, data TEXT NOT NULL)');}
   let initialState=null;try{const row=db?.prepare('SELECT data FROM active_state WHERE id=1').get();if(row)initialState=JSON.parse(row.data);}catch{}
   const rooms=new Rooms({engines,countdownMs,initialState,persist:r=>db?.prepare('INSERT OR IGNORE INTO matches VALUES(?,?,?,?)').run(r.id,r.gameId,r.endedAt,JSON.stringify(r))});
   const save=()=>{try{db?.prepare('INSERT OR REPLACE INTO active_state VALUES(1,?)').run(JSON.stringify(rooms.exportState()));}catch(e){console.error('Checkpoint:',e.message);}};
@@ -22,7 +22,7 @@ export async function createApp({dataDir=path.join(ROOT,'runtime','data'),persis
     let name;try{name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);}catch{res.writeHead(400);res.end();return;}
     if(await channel.handle(req,res,name))return;
     if(req.method!=='GET'&&req.method!=='HEAD'){res.writeHead(405);res.end();return;}
-    if(name==='/health'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({ok:true,name:'DUO PLAY',version:'2.0.0',games:catalog.length,rooms:rooms.rooms.size,transports:['socket.io','https-long-poll'],graceMs:180000,checkpoint:!!db,now:Date.now()}));return;}
+    if(name==='/health'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({ok:true,name:'DUIZUO',version:'2.0.0',games:catalog.length,rooms:rooms.rooms.size,transports:['socket.io','https-long-poll'],graceMs:180000,checkpoint:!!db,now:Date.now()}));return;}
     const base=path.join(ROOT,'dist');const file=path.resolve(base,'.'+(name==='/'?'/index.html':name));
     if(file!==base&&!file.startsWith(base+path.sep)){res.writeHead(403);res.end();return;}
     try{if(!(await stat(file)).isFile())throw new Error();const body=await readFile(file);res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':name.endsWith('.html')||name.endsWith('.json')?'no-store':'public, max-age=3600'});res.end(req.method==='HEAD'?undefined:body);}
@@ -47,6 +47,6 @@ export async function createApp({dataDir=path.join(ROOT,'runtime','data'),persis
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const app=await createApp();const port=Number(process.env.PORT||4390);if(!Number.isInteger(port)||port<1||port>65535)throw new Error('Invalid PORT');
-  await app.listen(port);console.log(`DUO PLAY ready: http://127.0.0.1:${port}`);
+  await app.listen(port);console.log(`DUIZUO ready: http://127.0.0.1:${port}`);
   const stop=async()=>{await app.close();process.exit(0);};process.on('SIGINT',stop);process.on('SIGTERM',stop);
 }
