@@ -235,27 +235,11 @@ function hockeyScene(ctx) {
   };
 
   const drawBlade = (c, p, i) => {
-    const color = colors[i];
-    const tilt = clamp(Math.atan2(p.ay, p.ax) * .35, -.5, .5);
-    c.save(); c.translate(p.x, p.y); c.rotate(tilt);
-    ellipse(c, 2, 23, 30, 8, 'rgba(58,76,100,.16)');
-    /* 杆身（后置绘制，保证露出） */
-    c.save(); c.rotate(-1.02); c.translate(0, -6);
-    c.fillStyle = grad(c, -6, 0, 6, 0, [[0, shade(color, .18)], [.5, shade(color, -.05)], [1, shade(color, -.36)]]);
-    rounded(c, -5, -42, 10, 46, 5); c.fill();
-    c.save(); c.globalAlpha = .42; c.fillStyle = '#ffffff'; rounded(c, -3.4, -39, 2.6, 38, 1.3); c.fill(); c.restore();
-    c.fillStyle = shade(color, -.3); rounded(c, -6, -46, 12, 9, 4); c.fill();
-    c.restore();
-    /* 刀身（带厚度） */
-    c.save(); softShadow(c, 'rgba(58,76,100,.24)', 9, 0, 3);
-    c.fillStyle = shade(color, -.32); rounded(c, -28, -8, 58, 19, 9); c.fill(); c.restore();
-    c.fillStyle = grad(c, 0, -15, 0, 10, [[0, shade(color, .5)], [.5, color], [1, shade(color, -.16)]]);
-    rounded(c, -28, -15, 58, 19, 9.5); c.fill();
-    c.save(); c.globalAlpha = .62; c.strokeStyle = '#ffffff'; c.lineWidth = 2.2;
-    c.beginPath(); c.moveTo(-16, -9.5); c.lineTo(14, -9.5); c.stroke(); c.restore();
-    c.fillStyle = alpha(shade(color, -.4), .5); rounded(c, -25, 0, 52, 6, 3); c.fill();
-    c.fillStyle = alpha(shade(color, -.22), .55); rounded(c, -28, -15, 9, 19, 4.5); c.fill();
-    if (i === own) { c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 2.8; c.beginPath(); c.arc(0, -2, 32, 0, Math.PI * 2); c.stroke(); }
+    c.save(); c.translate(p.x,p.y);
+    ellipse(c,2,10,28,9,'rgba(58,76,100,.16)');
+    const gradient=c.createRadialGradient(-8,-10,1,0,0,28);gradient.addColorStop(0,'#fff9ec');gradient.addColorStop(.18,colors[i]);gradient.addColorStop(1,i?'#239b86':'#d56657');
+    ellipse(c,0,0,27,27,gradient);c.strokeStyle='rgba(255,255,255,.8)';c.lineWidth=3;c.beginPath();c.arc(0,0,25,0,Math.PI*2);c.stroke();
+    ellipse(c,0,-3,12,13,'rgba(255,255,255,.45)');ellipse(c,0,-7,9,9,colors[i]);
     c.restore();
   };
 

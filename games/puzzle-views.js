@@ -1,3 +1,4 @@
+import Sudoku from '../client/legacy/sudoku/engine.js';
 // Stable DOM renderers: snapshots update nodes without resetting focus or IME.
 function mount(root, send, context, hint) {
   const doc = root.ownerDocument, cleanups = [], timers = new Set(), player = context.player;
@@ -134,9 +135,10 @@ function renderSudoku(root, send, context) {
   const ui = mount(root, send, context, '每行、每列、每个粗线九宫内，1–9 各出现一次。点击空格后选数字；也可用数字键、方向键和退格。错误每次扣 2 分，正确格每格 10 分。');
   const progress = ui.el('div', 'puzzle-progress-pair'), grid = ui.el('div', 'puzzle-sudoku-grid'); grid.setAttribute('role', 'group'); grid.setAttribute('aria-label', '数独棋盘');
   const stats = [0, 1].map(i => ui.el('span', `player-${i} puzzle-p${i}`)); progress.append(...stats);
-  let selected = -1;
+  let selected = -1, notesMode=false, auto=false, suggestion=null;
+  const annotations=context.annotations||{},notes=annotations['notes'+ui.player]||(annotations['notes'+ui.player]=Array.from({length:81},()=>[]));
   function select(index) { if (ui.view && !ui.view.givens[index]) { selected = index; refresh(); } }
-  function set(value) { if (selected >= 0) ui.command({ type: 'set', index: selected, value }); }
+  function set(value) { if (selected < 0)return;if(notesMode){if(value){const arr=notes[selected],i=arr.indexOf(value);if(i<0)arr.push(value);else arr.splice(i,1);}else notes[selected]=[];refresh();return;}notes[selected]=[];suggestion=null;ui.command({ type: 'set', index: selected, value }); }
   const cells = Array.from({ length: 81 }, (_, index) => { const b = ui.el('button', 'puzzle-sudoku-cell'); b.type = 'button'; b.dataset.row = String(Math.floor(index / 9)); b.dataset.col = String(index % 9); ui.listen(b, 'click', () => select(index)); return b; }); grid.append(...cells);
   const pad = ui.el('div', 'puzzle-numberpad'), digits = [];
   for (let n = 1; n <= 9; n++) {
@@ -153,13 +155,19 @@ function renderSudoku(root, send, context) {
   ui.listen(erase, 'click', () => set(0)); pad.append(erase);
   const cursor = ui.el('p', 'game-note puzzle-sudoku-cursor', '选中一个空格开始填写');
   ui.content.append(progress, grid, cursor); ui.controls.append(pad);
+  const tools=ui.el('div','sudoku-tools'),noteButton=ui.el('button','game-button','候选笔记 · 关闭'),autoButton=ui.el('button','game-button','自动候选 · 关闭'),explanation=ui.el('div','sudoku-explanation');
+  noteButton.type=autoButton.type='button';ui.listen(noteButton,'click',()=>{notesMode=!notesMode;noteButton.textContent='候选笔记 · '+(notesMode?'开启':'关闭');noteButton.setAttribute('aria-pressed',String(notesMode));});ui.listen(autoButton,'click',()=>{auto=!auto;autoButton.textContent='自动候选 · '+(auto?'开启':'关闭');refresh();});tools.append(noteButton,autoButton);ui.content.append(tools,explanation);
+  if(context.practice){const hint=ui.el('button','game-button','逻辑提示'),fill=ui.el('button','game-button','填入提示');hint.type=fill.type='button';fill.hidden=true;ui.listen(hint,'click',()=>{const board=ui.view.players[ui.player].cells;suggestion=Sudoku.next(board);if(suggestion){selected=suggestion.index;explanation.textContent=suggestion.title+'：'+suggestion.reason;fill.hidden=false;refresh();}else explanation.textContent='当前填写有冲突，先检查已填数字，或棋盘已经完成。';});ui.listen(fill,'click',()=>{if(suggestion){const step=suggestion;notesMode=false;noteButton.textContent='候选笔记 · 关闭';noteButton.setAttribute('aria-pressed','false');selected=step.index;set(step.value);fill.hidden=true;}});tools.append(hint,fill);}
   function refresh() {
     const view = ui.view; if (!view) return;
     const own = view.players[ui.player];
     const row = selected >= 0 ? Math.floor(selected / 9) : -1, col = selected >= 0 ? selected % 9 : -1;
+    const masks=auto?Sudoku.candidates(own.cells):null;
     cells.forEach((node, index) => {
       const r = Math.floor(index / 9), c = index % 9;
-      node.textContent = own.cells[index] || ''; node.disabled = Boolean(view.givens[index]) || view.status !== 'playing';
+      const value=own.cells[index],ns=value?[]:auto?Sudoku.bits(masks[index]):notes[index],signature=value+'|'+ns.join(',');
+      if(node.dataset.content!==signature){node.replaceChildren();if(value)node.textContent=value;else if(ns.length){const small=ui.el('span','sudoku-notes');for(let n=1;n<=9;n++)small.append(ui.el('i','',ns.includes(n)?String(n):''));node.append(small);}node.dataset.content=signature;}
+      node.disabled = Boolean(view.givens[index]) || view.status !== 'playing';
       node.dataset.given = String(Boolean(view.givens[index]));
       node.dataset.selected = String(index === selected);
       node.dataset.wrong = String(Boolean(own.wrong?.[index]));

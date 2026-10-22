@@ -1,6 +1,6 @@
 # Shared engine and renderer contract
 
-All functions are ES modules. Exact game IDs: gomoku, fleet, dots, memory, hockey, tanks, bomber, snake, tetris, slingshot, maze, quiz, g2048, sudoku, reversi, rps, reaction, mines, typing, simon.
+All functions are ES modules. The original 20 game IDs: gomoku, fleet, dots, memory, hockey, tanks, bomber, snake, tetris, slingshot, maze, quiz, g2048, sudoku, reversi, rps, reaction, mines, typing, simon.
 
 ## Engine
 
@@ -37,3 +37,7 @@ Shared CSS classes supplied by app: `.game-surface`, `.game-note`, `.game-toolba
 ## Testing and product finish
 
 Create meaningful node:test tests FIRST and observe red before code. Test authoritative rules and legal/illegal actions, timeouts, win/draw transitions, and hidden information where applicable. Every module should support an actual start-to-finish match, not just a lobby screen. Include helpful rule and control hints in each view. Record per-game action shapes and acceptance tests in a group report in `docs/<group>-report.md`. No worker publishes or commits. Use only D: executables and caches.
+
+## 3.0 additions
+
+Classics: connect4, tictactoe, hex, slide, nim, lights. Sports: billiards, badminton, tabletennis, archery, penalty, checkers. All use the same authority, view, renderer, input, persistence and timeout contract.

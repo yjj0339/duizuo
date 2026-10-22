@@ -9,11 +9,16 @@ Set-Location -LiteralPath $taskRoot
 if(-not $SkipChecks){& (Join-Path $nodeDir 'npm.cmd') test;if($LASTEXITCODE -ne 0){throw '测试失败，未发布'}}
 & (Join-Path $nodeDir 'npm.cmd') run build;if($LASTEXITCODE -ne 0){throw '构建失败，未发布'}
 Copy-Item -LiteralPath (Join-Path $taskRoot 'runtime-endpoint.json') -Destination (Join-Path $taskRoot 'dist\runtime-endpoint.json')
-$stage=Join-Path $taskRoot 'runtime\pages-stage';New-Item -ItemType Directory -Force -Path $stage|Out-Null
-$stage=Join-Path $taskRoot 'runtime\pages-stage';New-Item -ItemType Directory -Force -Path $stage|Out-Null
+$stage=[IO.Path]::GetFullPath((Join-Path $taskRoot 'runtime\pages-stage'))
+$expectedStage=[IO.Path]::GetFullPath((Join-Path $taskRoot 'runtime\pages-stage'))
+if($stage -ne $expectedStage -or -not $stage.StartsWith(($taskRoot.TrimEnd('\')+'\runtime\'),[StringComparison]::OrdinalIgnoreCase)){throw '发布目录路径校验失败'}
+New-Item -ItemType Directory -Force -Path $stage|Out-Null
+if((Get-Item -LiteralPath $stage).Attributes -band [IO.FileAttributes]::ReparsePoint){throw '发布目录不能是重解析链接'}
 Set-Location -LiteralPath $stage
 if(-not (Test-Path -LiteralPath (Join-Path $stage '.git'))){& $gitBin init -b gh-pages;& $gitBin config user.name 'DUIZUO Publisher';& $gitBin config user.email 'yjj0339@users.noreply.github.com';& $gitBin remote add origin 'https://github.com/yjj0339/duizuo.git'}else{& $gitBin fetch origin gh-pages 2>$null;if($LASTEXITCODE -eq 0){& $gitBin reset --hard origin/gh-pages|Out-Null}}
-if(Test-Path -LiteralPath (Join-Path $stage 'assets')){Remove-Item -LiteralPath (Join-Path $stage 'assets') -Recurse -Force}
+$assetsTarget=[IO.Path]::GetFullPath((Join-Path $stage 'assets'))
+if($assetsTarget -ne ($expectedStage+'\assets')){throw '发布资源目录路径校验失败'}
+if(Test-Path -LiteralPath $assetsTarget){if((Get-Item -LiteralPath $assetsTarget).Attributes -band [IO.FileAttributes]::ReparsePoint){throw '发布资源目录不能是链接'};Remove-Item -LiteralPath $assetsTarget -Recurse -Force}
 foreach($stale in @('index.html','icon.svg','runtime-endpoint.json','.nojekyll')){if(Test-Path -LiteralPath (Join-Path $stage $stale)){Remove-Item -LiteralPath (Join-Path $stage $stale) -Force}}
 Copy-Item -Path (Join-Path $taskRoot 'dist\*') -Destination $stage -Recurse -Force
 [IO.File]::WriteAllText((Join-Path $stage '.nojekyll'),'')

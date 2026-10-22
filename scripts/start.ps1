@@ -11,6 +11,7 @@ foreach($folder in @('temp','logs','data','bin')){New-Item -ItemType Directory -
 $env:TEMP=Join-Path $runtimeDir 'temp';$env:TMP=$env:TEMP
 $env:npm_config_cache='D:\codexAI\.runtime\npm-cache'
 $env:GH_CONFIG_DIR='D:\codexAI\.runtime\github-config'
+$env:NO_PROXY=(@($env:NO_PROXY,'localhost','127.0.0.1','api.github.com','github.com','raw.githubusercontent.com','.trycloudflare.com')|Where-Object {$_}) -join ','
 $env:TUNNEL_ORIGIN_CERT=Join-Path $runtimeDir 'origin-cert.pem'
 $env:PORT=[string]$Port
 $env:Path=(Split-Path $nodeBin)+';D:\codexAI\.toolchains\git\cmd;'+$env:Path
@@ -21,7 +22,7 @@ elseif(-not (Test-Path -LiteralPath (Join-Path $taskRoot 'dist\index.html'))){th
 $localUrl="http://127.0.0.1:$Port"
 $stateFile=Join-Path $runtimeDir 'state.json'
 $oldState=$null;if(Test-Path -LiteralPath $stateFile){try{$oldState=Get-Content -LiteralPath $stateFile -Raw|ConvertFrom-Json}catch{}}
-$ready=$false;try{$health=Invoke-RestMethod -Uri "$localUrl/health" -TimeoutSec 2;if($health.ok -and $health.name -eq 'DUIZUO' -and $health.version -eq '1.0.0'){throw '该端口运行旧版服务，请使用新版默认 4390 端口。旧服务不会被自动停止。'};$ready=$health.ok -and $health.name -eq 'DUIZUO' -and $health.version -eq '2.0.0'}catch{if($_.Exception.Message -like '*旧版服务*'){throw}}
+$ready=$false;try{$health=Invoke-RestMethod -Uri "$localUrl/health" -TimeoutSec 2;if($health.ok -and $health.name -eq 'DUIZUO' -and $health.version -eq '1.0.0'){throw '该端口运行旧版服务，请使用新版默认 4390 端口。旧服务不会被自动停止。'};$ready=$health.ok -and $health.name -eq 'DUIZUO' -and $health.version -eq '3.0.0'}catch{if($_.Exception.Message -like '*旧版服务*'){throw}}
 $serverProcess=$null
 if(-not $ready){
  $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -40,7 +41,7 @@ if(-not $LocalOnly){
  $publicUrl=$null;$tunnelProcess=$null
  if($oldState -and $oldState.port -eq $Port -and $oldState.tunnelPid -and $oldState.server -like 'https://*.trycloudflare.com'){
   $existing=Get-CimInstance Win32_Process -Filter ('ProcessId='+[int]$oldState.tunnelPid) -ErrorAction SilentlyContinue
-  if($existing -and $existing.ExecutablePath -eq (Join-Path $runtimeDir 'bin\cloudflared.exe')){try{$check=Invoke-RestMethod -Uri ($oldState.server+'/health') -TimeoutSec 6;if($check.ok){$publicUrl=$oldState.server;$state.tunnelPid=$oldState.tunnelPid}}catch{}}
+  if($existing -and $existing.ExecutablePath -eq (Join-Path $runtimeDir 'bin\cloudflared.exe')){try{$check=Invoke-RestMethod -Uri ($oldState.server+'/health') -NoProxy -TimeoutSec 6;if($check.ok){$publicUrl=$oldState.server;$state.tunnelPid=$oldState.tunnelPid}}catch{}}
  }
  if(-not $publicUrl){
   $tunnelBin=Join-Path $runtimeDir 'bin\cloudflared.exe'
@@ -56,11 +57,12 @@ if(-not $LocalOnly){
   for($i=0;$i -lt 90;$i++){Start-Sleep -Milliseconds 500;foreach($candidate in @($tunnelLog,(Join-Path $runtimeDir "logs\tunnel-$stamp.stderr.log"))){if(-not (Test-Path -LiteralPath $candidate)){continue};$text=$null;try{$text=Get-Content -LiteralPath $candidate -Raw -ErrorAction Stop}catch{continue};if(-not $text){continue};$match=[regex]::Match($text,'https://[a-z0-9-]+\.trycloudflare\.com');if($match.Success){$publicUrl=$match.Value;break}};if($publicUrl){break};if($tunnelProcess.HasExited){break}}
  }
  if($publicUrl){
-  $publicReady=$false;for($i=0;$i -lt 30;$i++){try{$check=Invoke-RestMethod -Uri ($publicUrl+'/health') -TimeoutSec 5;if($check.ok){$publicReady=$true;break}}catch{};Start-Sleep -Milliseconds 1000}
+  $publicReady=$false;for($i=0;$i -lt 30;$i++){try{$check=Invoke-RestMethod -Uri ($publicUrl+'/health') -NoProxy -TimeoutSec 5;if($check.ok){$publicReady=$true;break}}catch{};Start-Sleep -Milliseconds 1000}
   if($publicReady){
    $state.server=$publicUrl;$state.playUrl='https://yjj0339.github.io/duizuo/?server='+[Uri]::EscapeDataString($publicUrl)
    $endpoint=@{server=$publicUrl;kind='temporary-tunnel';updatedAt=(Get-Date).ToUniversalTime().ToString('o')}|ConvertTo-Json
    Set-Content -LiteralPath (Join-Path $runtimeDir 'endpoint.json') -Value $endpoint -Encoding utf8
+   Set-Content -LiteralPath (Join-Path $taskRoot 'runtime-endpoint.json') -Value $endpoint -Encoding utf8
    Set-Content -LiteralPath (Join-Path $taskRoot 'dist\runtime-endpoint.json') -Value $endpoint -Encoding utf8
    if(Test-Path -LiteralPath $ghBin){
     try{

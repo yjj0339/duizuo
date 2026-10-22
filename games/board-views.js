@@ -189,7 +189,7 @@ function mountGomoku(root, send, context) {
       b.classList.toggle('board-dimmed', over && winner >= 0 && value !== -1 && value !== winner);
       b.setAttribute('aria-label', `${coord(i, 15)}，${value === -1 ? '空位' : value === 0 ? '蜜桃粉棋子，玩家 1' : '薄荷绿棋子，玩家 2'}${i === v.lastMove ? '，最新落子' : ''}`);
     }); refresh();
-  }, destroy: a.destroy };
+  }, suggest(action){board.select(action.index,true);}, destroy: a.destroy };
 }
 
 /* —— 隐藏海战：浅色海域 + 精致舰船 —— */

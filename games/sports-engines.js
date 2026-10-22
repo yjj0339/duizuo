@@ -1,0 +1,62 @@
+// All physics, scores and secret choices are authoritative. Small fixed steps avoid tunnelling.
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),num=x=>typeof x==='number'&&Number.isFinite(x),int=(x,a,b)=>Number.isInteger(x)&&x>=a&&x<=b;
+const base=(now,message,ms=300000)=>({status:'playing',winner:null,scores:[0,0],message,endsAt:now+ms,now});
+const finish=(s,w,message)=>{s.status='finished';s.winner=w;s.message=message;};
+const compare=s=>s.scores[0]===s.scores[1]?-1:s.scores[0]>s.scores[1]?0:1;
+const valid=(s,p,a,now)=>s.status==='playing'&&int(p,0,1)&&a&&typeof a==='object'&&!Array.isArray(a)&&num(now)&&now<s.endsAt;
+const view=(s,p)=>Object.fromEntries(Object.entries(structuredClone(s)).filter(([k])=>!k.startsWith('_')));
+function timeout(s,now){if(s.status!=='playing'||!num(now))return true;s.now=now;if(now>=s.endsAt){finish(s,compare(s),'时间到，按得分结算');return true;}return false;}
+const rand=s=>{s._rng=(Math.imul(s._rng,1664525)+1013904223)>>>0;return s._rng/4294967296;};
+function point(s,p,now,target=11){s.scores[p]++;if(s.scores[p]>=target&&(s.scores[p]-s.scores[1-p]>=2||s.scores[p]>=target+4)){finish(s,p,'漂亮！拿下这一场');return;}s.serving=p;s.readyAt=now+1100;s.rally=false;s.message=`${p===0?'蜜桃':'薄荷'}得分，稍后发球`;}
+export const pockets=[[23,23],[360,15],[697,23],[23,377],[360,385],[697,377]];
+const ballColor=n=>n===8?'#283c47':['#e3b838','#5686b0','#d86b5d','#8c71ac','#e29449','#49a890','#ad6178'][(n-1)%8];
+function cueHome(s){const c=s.balls[0];for(let y=200;y<=350;y+=25)for(let x=180;x>=50;x-=25)if(s.balls.slice(1).every(b=>b.potted||Math.hypot(b.x-x,b.y-y)>23)){Object.assign(c,{x,y,vx:0,vy:0,potted:false});return;}}
+const poolLeft=(s,p)=>s.balls.filter(b=>!b.potted&&b.n!==0&&b.n!==8&&(s.groups[p]===null||Number(b.n>8)===s.groups[p])).length;
+function resolvePool(s,now){const p=s.turn,pot=s._potted,foul=s.balls[0].potted||s._first===null||(s._first===8&&s._left>0)||(s.groups[p]!==null&&s._first!==8&&Number(s._first>8)!==s.groups[p]);
+ if(pot.includes(8)){finish(s,!foul&&s._left===0?p:1-p,!foul&&s._left===0?'黑八入袋，赢下球局':'提前打进黑八或犯规，对方获胜');return;}
+ if(s.groups[p]===null&&!foul){const n=pot.find(n=>n!==0&&n!==8);if(n){s.groups[p]=Number(n>8);s.groups[1-p]=1-s.groups[p];}}
+ s.scores=s.groups.map((g,i)=>g===null?0:7-poolLeft(s,i));const own=pot.some(n=>n&&n!==8&&Number(n>8)===s.groups[p]);if(foul||!own)s.turn=1-p;
+ s.ballInHand=foul;if(s.balls[0].potted)cueHome(s);s.message=foul?'犯规，对方可放置白球':own?'好球，继续击打':'换对方击球';}
+const billiards={create(seed,now){const s={...base(now,'拖动球台瞄准，调整力度后击球',480000),balls:[{n:0,x:180,y:200,vx:0,vy:0,potted:false,color:'#fffcf1'}],turn:0,groups:[null,null],moving:false,ballInHand:false};let k=0;const order=[1,9,2,10,8,3,4,11,5,12,6,13,7,14,15];for(let r=0;r<5;r++)for(let j=0;j<=r;j++){const n=order[k++];s.balls.push({n,x:470+r*19.5,y:200+(j-r/2)*22.4,vx:0,vy:0,potted:false,color:ballColor(n)});}return s;},
+ action(s,p,a,now){if(!valid(s,p,a,now)||p!==s.turn||s.moving)return false;const c=s.balls[0];if(a.type==='place'&&s.ballInHand&&num(a.x)&&num(a.y)&&a.x>=40&&a.x<=680&&a.y>=40&&a.y<=360&&s.balls.slice(1).every(b=>b.potted||Math.hypot(b.x-a.x,b.y-a.y)>23)){c.x=a.x;c.y=a.y;return true;}
+ if(a.type!=='shoot'||!num(a.angle)||Math.abs(a.angle)>Math.PI*2||!num(a.power)||a.power<.1||a.power>1)return false;
+ s._left=poolLeft(s,p);s._first=null;s._potted=[];s.ballInHand=false;s.moving=true;s._shotAt=now;c.vx=Math.cos(a.angle)*(160+900*a.power);c.vy=Math.sin(a.angle)*(160+900*a.power);s.message='球在滚动…';return true;},
+ tick(s,dt,now){if(timeout(s,now)||!s.moving)return;const steps=Math.max(1,Math.ceil(Math.min(Math.max(0,num(dt)?dt:0),.1)*240)),h=Math.min(Math.max(0,num(dt)?dt:0),.1)/steps;
+ for(let z=0;z<steps;z++){for(const b of s.balls){if(b.potted)continue;b.x+=b.vx*h;b.y+=b.vy*h;b.vx*=Math.exp(-1.05*h);b.vy*=Math.exp(-1.05*h);if(Math.hypot(b.vx,b.vy)<5)b.vx=b.vy=0;
+ if(pockets.some(([x,y])=>Math.hypot(b.x-x,b.y-y)<22)){b.potted=true;b.vx=b.vy=0;s._potted.push(b.n);continue;}
+ if(b.x<31||b.x>689){b.x=clamp(b.x,31,689);b.vx*=-.83;}if(b.y<31||b.y>369){b.y=clamp(b.y,31,369);b.vy*=-.83;}}
+ for(let i=0;i<s.balls.length;i++)for(let j=i+1;j<s.balls.length;j++){const a=s.balls[i],b=s.balls[j];if(a.potted||b.potted)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d>=22||d<.001)continue;const nx=dx/d,ny=dy/d,over=(22-d)/2;a.x-=nx*over;a.y-=ny*over;b.x+=nx*over;b.y+=ny*over;const v=(a.vx-b.vx)*nx+(a.vy-b.vy)*ny;if(v>0){a.vx-=v*nx*.97;a.vy-=v*ny*.97;b.vx+=v*nx*.97;b.vy+=v*ny*.97;if(i===0&&s._first===null)s._first=b.n;}}}
+ if(s.balls.every(b=>b.potted||Math.hypot(b.vx,b.vy)<5)||now-s._shotAt>16000){s.moving=false;for(const b of s.balls)b.vx=b.vy=0;resolvePool(s,now);}},view};
+function shuttleServe(s){const p=s.serving;s.ball={x:s.players[p].x,y:265,vx:0,vy:0};}
+const badminton={create(seed,now){const s={...base(now,'靠近羽球，再选择高远、吊球或扣杀'),players:[{x:180,target:180,jump:0},{x:540,target:540,jump:0}],ball:{x:180,y:265,vx:0,vy:0},serving:0,last:1,rally:false,readyAt:now};return s;},
+ action(s,p,a,now){if(!valid(s,p,a,now))return false;if(a.type==='move'&&num(a.x)&&a.x>=0&&a.x<=720){s.players[p].target=clamp(a.x,p?390:35,p?685:330);return true;}if(a.type==='jump'){if(s.players[p].jump>now)return false;s.players[p].jump=now+650;return true;}
+ if(a.type!=='hit'||!['clear','drop','smash'].includes(a.style)||now<s.readyAt||(!s.rally&&p!==s.serving)||s.last===p&&s.rally)return false;
+ const me=s.players[p],b=s.ball;if(s.rally&&((b.x<360?0:1)!==p||Math.hypot(b.x-me.x,b.y-(me.jump>now?200:280))>115))return false;
+ const dir=p?-1:1,dist=Math.abs((p?180:540)-b.x),duration=a.style==='clear'?1.55:a.style==='drop'?1.1:.7;
+ b.vx=dir*dist/duration;b.vy=a.style==='clear'?-490:a.style==='drop'?-370:me.jump>now?-150:-330;s.last=p;s.rally=true;s.message=a.style==='smash'?'扣杀！':a.style==='drop'?'轻轻一吊':'高远球';return true;},
+ tick(s,dt,now){if(timeout(s,now))return;dt=clamp(num(dt)?dt:0,0,.1);for(const pl of s.players)pl.x+=clamp(pl.target-pl.x,-260*dt,260*dt);if(!s.rally){if(now>=s.readyAt)shuttleServe(s);return;}const b=s.ball,n=Math.ceil(dt*240);for(let i=0;i<n;i++){const h=dt/n,old=b.x;b.x+=b.vx*h;b.y+=b.vy*h;b.vy+=630*h;if((old<360)!==(b.x<360)&&b.y>240){point(s,1-s.last,now);break;}if(b.y>=390){const winner=b.x<25||b.x>695?1-s.last:b.x<360?1:0;point(s,winner,now);break;}}},view};
+function pingServe(s){const p=s.serving;s.ball={x:p?625:95,y:s.players[p].y,z:40,vx:0,vy:0,vz:0};}
+const tabletennis={create(seed,now){return{...base(now,'先让球在己方台面弹一次，再及时挥拍回击'),players:[{y:200,target:200},{y:200,target:200}],ball:{x:95,y:200,z:40,vx:0,vy:0,vz:0},serving:0,last:1,bounces:0,rally:false,readyAt:now};},
+ action(s,p,a,now){if(!valid(s,p,a,now))return false;if(a.type==='move'&&num(a.y)&&a.y>=0&&a.y<=400){s.players[p].target=clamp(a.y,55,345);return true;}
+ if(a.type!=='hit'||!['drive','lob','smash'].includes(a.style)||!num(a.target)||a.target<0||a.target>1||now<s.readyAt||(!s.rally&&p!==s.serving))return false;
+ const b=s.ball;if(s.rally&&(s.last===p||s.bounces!==1||Math.abs(b.x-(p?625:95))>95||Math.abs(b.y-s.players[p].y)>75||b.z>120))return false;
+ const t=a.style==='lob'?1.45:a.style==='smash'?.8:1.1;b.vx=((p?95:625)-b.x)/t;b.vy=(65+a.target*270-b.y)/t;b.z=Math.max(25,b.z);b.vz=(380*t*t/2-b.z)/t;
+ s.last=p;s.bounces=0;s.rally=true;s.message=a.style==='smash'?'快攻！':a.style==='lob'?'挑高球':'斜线回球';return true;},
+ tick(s,dt,now){if(timeout(s,now))return;dt=clamp(num(dt)?dt:0,0,.1);for(const pl of s.players)pl.y+=clamp(pl.target-pl.y,-380*dt,380*dt);if(!s.rally){if(now>=s.readyAt)pingServe(s);return;}const b=s.ball,n=Math.ceil(dt*240);for(let i=0;i<n;i++){const h=dt/n,old=b.x;b.x+=b.vx*h;b.y+=b.vy*h;b.z+=b.vz*h;b.vz-=380*h;
+ if((old<360)!==(b.x<360)&&b.z<24){point(s,1-s.last,now);break;}if(b.z<=0){if(b.y<45||b.y>355||b.x<65||b.x>655||(b.x<360?0:1)===s.last){point(s,1-s.last,now);break;}s.bounces++;if(s.bounces>=2){point(s,s.last,now);break;}b.z=0;b.vz=Math.abs(b.vz)*.83;}
+ if(b.x<5||b.x>715||b.y<0||b.y>400){point(s,s.bounces===0?1-s.last:s.last,now);break;}}
+ if(!s.rally&&s.status==='playing'){const total=s.scores[0]+s.scores[1];s.serving=total>=20?total%2:Math.floor(total/2)%2;}},view};
+const archery={create(seed,now){const s={...base(now,'看风向、修正准星，两人各射五箭',180000),_rng:seed>>>0,round:0,totalRounds:5,wind:0,shots:[null,null],hits:[[],[]],revealAt:0};s.wind=Math.round((rand(s)-.5)*60);return s;},
+ action(s,p,a,now){if(!valid(s,p,a,now)||s.shots[p]||s.revealAt||a.type!=='shoot'||!num(a.x)||!num(a.y)||Math.abs(a.x)>1||Math.abs(a.y)>1)return false;const x=a.x+s.wind/100,y=a.y,r=Math.hypot(x,y),score=Math.max(0,10-Math.floor(r*10));s.shots[p]={x,y,score};s.hits[p].push({x,y,score});s.scores[p]+=score;if(s.shots.every(Boolean)){s.revealAt=now+1400;s.message='双箭落靶，看看这一轮';}return true;},
+ tick(s,dt,now){if(timeout(s,now))return;if(s.revealAt&&now>=s.revealAt){s.round++;if(s.round===5)finish(s,compare(s),'五箭完成，按总环数决胜');else{s.shots=[null,null];s.revealAt=0;s.wind=Math.round((rand(s)-.5)*60);s.message='新一轮风向，两人准备';}}},
+ view(s,p){const v=view(s,p);if(!s.revealAt&&s.status==='playing'){v.shots[1-p]=s.shots[1-p]?{ready:true}:null;v.hits[1-p]=v.hits[1-p].slice(0,s.round);v.scores[1-p]=v.hits[1-p].reduce((n,a)=>n+a.score,0);}return v;}};
+const penalty={create(seed,now){return{...base(now,'射门与扑救同时暗选，锁定后揭晓',240000),round:0,attacker:0,_choices:[null,null],ready:[false,false],reveal:null,revealAt:0,choiceEndsAt:now+15000,history:[]};},
+ action(s,p,a,now){if(!valid(s,p,a,now)||s.reveal||s.ready[p]||a.type!=='choose'||!int(a.zone,0,5))return false;s._choices[p]=a.zone;s.ready[p]=true;if(s.ready.every(Boolean))revealPenalty(s,now);return true;},
+ tick(s,dt,now){if(timeout(s,now))return;if(!s.reveal&&now>=s.choiceEndsAt){s._choices=s._choices.map((c,p)=>c??(p===s.attacker?-1:6));s.ready=[true,true];revealPenalty(s,now);}if(s.reveal&&now>=s.revealAt){s.round++;const kicks=[Math.ceil(s.round/2),Math.floor(s.round/2)],left=kicks.map(n=>Math.max(0,5-n));if(s.round<10&&(s.scores[0]>s.scores[1]+left[1]||s.scores[1]>s.scores[0]+left[0])||s.round>=10&&s.round%2===0&&s.scores[0]!==s.scores[1]||s.round>=20){finish(s,compare(s),'点球大战结束');return;}s.attacker=s.round%2;s._choices=[null,null];s.ready=[false,false];s.reveal=null;s.revealAt=0;s.choiceEndsAt=now+15000;s.message='交换攻守，暗选一个方向';}},view(s,p){return{...view(s,p),choice:s._choices[p]};}};
+function revealPenalty(s,now){const shot=s._choices[s.attacker],dive=s._choices[1-s.attacker],goal=shot>=0&&shot!==dive;s.reveal={shot,dive,goal,attacker:s.attacker};s.history.push(s.reveal);if(goal)s.scores[s.attacker]++;s.revealAt=now+1600;s.message=goal?'球进了！':'漂亮扑救！';}
+export function checkerMoves(s){const p=s.turn,sign=p?-1:1,jumps=[],walk=[];for(let from=0;from<64;from++){const v=s.board[from];if(Math.sign(v)!==sign||s.chain!==null&&s.chain!==from)continue;const row=from>>3,col=from%8,dirs=Math.abs(v)===2?[-1,1]:[sign];for(const dr of dirs)for(const dc of[-1,1]){const r=row+dr,c=col+dc;if(r<0||r>7||c<0||c>7)continue;const mid=r*8+c;if(!s.board[mid]&&s.chain===null)walk.push({from,to:mid,capture:null});else if(Math.sign(s.board[mid])===-sign){const rr=r+dr,cc=c+dc,to=rr*8+cc;if(rr>=0&&rr<8&&cc>=0&&cc<8&&!s.board[to])jumps.push({from,to,capture:mid});}}}return jumps.length?jumps:s.chain!==null?[]:walk;}
+const checkers={create(seed,now){const board=Array(64).fill(0);for(let r=0;r<8;r++)for(let c=0;c<8;c++)if((r+c)%2&&r<3)board[r*8+c]=1;else if((r+c)%2&&r>4)board[r*8+c]=-1;return{...base(now,'强制吃子，可连续跳吃；到达底线升王'),board,turn:0,chain:null,quiet:0,turnEndsAt:now+45000};},
+ action(s,p,a,now){if(!valid(s,p,a,now)||s.turn!==p||a.type!=='move'||!int(a.from,0,63)||!int(a.to,0,63)||now>=s.turnEndsAt)return false;const move=checkerMoves(s).find(m=>m.from===a.from&&m.to===a.to);if(!move)return false;const v=s.board[a.from];s.board[a.to]=v;s.board[a.from]=0;if(move.capture!==null){s.board[move.capture]=0;s.scores[p]++;s.quiet=0;}else s.quiet++;const crown=Math.abs(v)===1&&(a.to>>3)===(p?0:7);if(crown)s.board[a.to]=v*2;s.chain=move.capture!==null&&!crown?a.to:null;
+ if(s.chain!==null&&checkerMoves(s).length){s.message='还可以继续跳吃';s.turnEndsAt=now+45000;return true;}s.chain=null;s.turn=1-p;s.turnEndsAt=now+45000;if(!checkerMoves(s).length)finish(s,p,'对方已无合法棋步');else if(s.quiet>=80)finish(s,-1,'连续 80 步未吃子，和棋');else s.message='轮流斜走一步，有吃必吃';return true;},
+ tick(s,dt,now){if(timeout(s,now))return;if(now>=s.turnEndsAt)finish(s,1-s.turn,'本回合超时');},view(s,p){return{...view(s,p),legal:checkerMoves(s)};}};
+export const games={billiards,badminton,tabletennis,archery,penalty,checkers};

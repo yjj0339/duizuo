@@ -1,3 +1,5 @@
+import {classicAI} from '../ai/classics.js';
+import {sportsAI} from '../ai/sports.js';
 const DIRS = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
 const OPPOSITE = { up: 'down', down: 'up', left: 'right', right: 'left' };
 
@@ -255,3 +257,5 @@ export const bots = {
     return { type: 'note', note, round: view.round };
   },
 };
+// New-game baseline also receives public views only. Lower search depth keeps QA bounded.
+for(const [id,fn] of Object.entries({...classicAI,...sportsAI}))bots[id]=(v,p,b)=>fn(v,p,b,'casual',v.now);

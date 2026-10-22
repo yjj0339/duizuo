@@ -373,10 +373,25 @@ const palettes = {
   simon: [LIL[1], LIL[2], '#6450CC'],
 };
 
+let artInstance=0;
+const additions={
+ connect4:`<rect x="37" y="40" width="126" height="111" rx="18" fill="#b9b0df"/>${Array.from({length:20},(_,i)=>`<circle cx="${53+i%5*24}" cy="${58+Math.floor(i/5)*25}" r="9" fill="${i>12?(i%2?'#71c2a8':'#f1a38d'):'#f9f6ec'}"/>`).join('')}<circle cx="77" cy="27" r="11" fill="#f1a38d"/>`,
+ tictactoe:`<rect x="39" y="32" width="122" height="122" rx="25" fill="#fff4e3"/><path d="M80 44V143M121 44V143M50 73H150M50 113H150" stroke="#d9c1a8" stroke-width="3"/><path d="M51 43L69 61M69 43L51 61M92 84L110 102M110 84L92 102M132 123L150 141M150 123L132 141" stroke="#e99b83" stroke-width="6" stroke-linecap="round"/><circle cx="141" cy="53" r="13" fill="none" stroke="#83b99d" stroke-width="6"/><circle cx="60" cy="133" r="13" fill="none" stroke="#83b99d" stroke-width="6"/>`,
+ hex:`${Array.from({length:12},(_,i)=>{const x=52+i%4*27+Math.floor(i/4)*13,y=54+Math.floor(i/4)*25;return`<path d="M${x-15} ${y}l7.5-13h15l7.5 13-7.5 13h-15Z" fill="${[1,5,9,10].includes(i)?'#f0ac96':i%3===0?'#88bfa7':'#f2e9d5'}" stroke="#fff9ec" stroke-width="3"/>`;}).join('')}<path d="M45 146H158" stroke="#a9c6a9" stroke-width="5" stroke-linecap="round"/>`,
+ slide:`<rect x="38" y="32" width="124" height="124" rx="20" fill="#d7bc94"/>${[1,2,3,4,0,6,7,5,8].map((n,i)=>n?`<rect x="${44+i%3*39}" y="${38+Math.floor(i/3)*39}" width="35" height="35" rx="10" fill="#fff6e4"/><text x="${61+i%3*39}" y="${62+Math.floor(i/3)*39}" text-anchor="middle" fill="#9d8262" font-size="21" font-weight="700">${n}</text>`:'').join('')}`,
+ nim:`${[0,1,2].map((n)=>`<ellipse cx="${50+n*50}" cy="119" rx="25" ry="12" fill="#e0d5b9"/><path d="M${25+n*50} 116q25 40 50 0" fill="#b5c7a2"/>${Array.from({length:n+2},(_,i)=>`<ellipse cx="${43+n*50+i%2*14}" cy="${105-Math.floor(i/2)*16}" rx="9" ry="6" transform="rotate(-20 ${43+n*50+i%2*14} ${105-Math.floor(i/2)*16})" fill="#82ad83" stroke="#edf3cf" stroke-width="2"/>`).join('')}`).join('')}`,
+ lights:`<rect x="38" y="32" width="124" height="124" rx="24" fill="#e7ddbc"/>${Array.from({length:9},(_,i)=>{const x=63+i%3*37,y=57+Math.floor(i/3)*37;return`<path d="M${x} ${y-13}l4 8 9 1-6.5 6 1.5 9-8-4-8 4 1.5-9-6.5-6 9-1Z" fill="${i%3===1?'#c5b899':'#ffe599'}" stroke="#fff9d9" stroke-width="2"/>`;}).join('')}`,
+ billiards:`<rect x="24" y="42" width="152" height="99" rx="20" fill="#b28e68"/><rect x="32" y="50" width="136" height="83" rx="13" fill="#6fae92"/>${[[35,53],[100,50],[165,53],[35,130],[100,133],[165,130]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="7" fill="#344e43"/>`).join('')}<path d="M10 158L90 102" stroke="#d6b987" stroke-width="5"/><circle cx="92" cy="101" r="9" fill="#fff9e9"/><circle cx="132" cy="80" r="10" fill="#394852"/><text x="132" y="84" text-anchor="middle" fill="white" font-size="11">8</text><circle cx="135" cy="109" r="9" fill="#f2bc63"/>`,
+ badminton:`<path d="M44 150L86 98M156 150L114 98" stroke="#bd9b72" stroke-width="9"/><ellipse cx="91" cy="77" rx="26" ry="37" transform="rotate(30 91 77)" fill="#eef6e5" stroke="#85b393" stroke-width="7"/><path d="M74 58L102 101M70 75L112 80M87 45L88 108" stroke="#b6c9a4" stroke-width="2"/><path d="M148 45L124 30L124 64Z" fill="#fff8e8" stroke="#d5c9ad"/><circle cx="149" cy="46" r="6" fill="#dbb785"/>`,
+ tabletennis:`<rect x="25" y="73" width="150" height="67" rx="10" fill="#7eaaa5" stroke="#fff6e4" stroke-width="4"/><path d="M100 70V142M27 106H173" stroke="#fff8e8" stroke-width="3"/><path d="M99 66V145" stroke="#4e7876" stroke-width="9"/><path d="M54 51L44 80M143 117L155 146" stroke="#bf9d77" stroke-width="10"/><ellipse cx="62" cy="43" rx="23" ry="28" transform="rotate(25 62 43)" fill="#f1a292"/><ellipse cx="137" cy="101" rx="23" ry="28" transform="rotate(-25 137 101)" fill="#69b4a0"/><circle cx="145" cy="44" r="9" fill="#fffbe7"/>`,
+ archery:`<path d="M65 150L98 85L136 150" fill="none" stroke="#bb9a74" stroke-width="8"/>${[52,40,29,17].map((r,i)=>`<circle cx="101" cy="84" r="${r}" fill="${['#faf5e3','#85b9bf','#e69785','#efcc77'][i]}"/>`).join('')}<path d="M101 84L160 34M152 32L161 33L164 42" fill="none" stroke="#5d7967" stroke-width="4"/>`,
+ penalty:`<rect x="34" y="43" width="132" height="93" rx="7" fill="#c4d9b8" stroke="#fff8e8" stroke-width="7"/>${[59,84,109,134].map(x=>`<path d="M${x} 47V131" stroke="#9ab995"/>`).join('')}<path d="M38 73H163M38 102H163" stroke="#9ab995"/><circle cx="104" cy="130" r="25" fill="#fff9eb" stroke="#a4b296" stroke-width="2"/><path d="M104 117L116 126L112 140H96L92 126Z" fill="#6e8a79"/>`,
+ checkers:`<rect x="42" y="38" width="116" height="116" rx="18" fill="#d3b794"/>${Array.from({length:16},(_,i)=>`<rect x="${48+i%4*26}" y="${44+Math.floor(i/4)*26}" width="26" height="26" fill="${(i%4+Math.floor(i/4))%2?'#9fb59b':'#f7e9ce'}"/>`).join('')}<circle cx="87" cy="83" r="20" fill="#f1a18a" stroke="#ffedda" stroke-width="3"/><circle cx="139" cy="135" r="20" fill="#6bb49a" stroke="#eff9d7" stroke-width="3"/><text x="88" y="91" text-anchor="middle" font-size="23" fill="#fff7e0">♛</text>`
+};
 export function gameArt(game) {
-  const id = game.id;
-  const pal = palettes[id] || [game.color, game.color, game.color];
-  const build = shapes[id];
+  const key=game.id,id=key+'-'+(++artInstance);
+  const pal = palettes[key] || [game.color, game.color, game.color];
+  const build = shapes[key]||(additions[key]?()=>additions[key]:null);
   const body = build
     ? build(id)
     : `<rect x="50" y="38" width="100" height="106" rx="26" fill="url(#gs${id})" filter="url(#sd${id})"/>

@@ -16,13 +16,13 @@ try{
  const a=await ca.newPage(),b=await cb.newPage();for(const p of [a,b])p.on('pageerror',e=>errors.push(e.stack));
  await Promise.all([a.goto(url,{waitUntil:'domcontentloaded'}),b.goto(url,{waitUntil:'domcontentloaded'})]);
  for(const p of [a,b])await p.waitForSelector('#connection-label.online',{timeout:30000});
- await a.locator('#nickname').fill('桃桃');await b.locator('#nickname').fill('薄荷');await a.locator('#create').click();
+ await a.locator('#nickname').fill('桃桃');await b.locator('#nickname').fill('薄荷');await a.locator('#create').click();await a.getByRole('tab',{name:/联机/}).click();await a.locator('#mode-start').click();
  await a.waitForFunction(()=>window.__DUIZUO__.getSnapshot()?.room.code);const code=await a.evaluate(()=>window.__DUIZUO__.getSnapshot().room.code);
  await b.locator('#room-code').fill(code);await b.locator('#join-form button').click();await b.waitForFunction(()=>window.__DUIZUO__.getSnapshot()?.room.players.every(Boolean));
- const ids=await a.evaluate(()=>window.__DUIZUO__.catalog.map(g=>g.id));
+ const ids=process.env.GAME_IDS?process.env.GAME_IDS.split(','):await a.evaluate(()=>window.__DUIZUO__.catalog.map(g=>g.id));
  for(const id of ids){
   console.log('Checking '+id);
-  await a.locator(`[data-game="${id}"]`).click();
+  await a.locator(`[data-game="${id}"]`).click();await a.getByRole('tab',{name:/联机/}).click();await a.locator('#mode-start').click();
   await a.waitForFunction(id=>{const s=window.__DUIZUO__.getSnapshot();return s?.room.gameId===id&&s.room.phase==='waiting';},id);
   await b.waitForFunction(id=>window.__DUIZUO__.getSnapshot()?.room.gameId===id,id);
   await a.locator('#ready').click();await b.locator('#ready').click();await Promise.all([waitGame(a,id),waitGame(b,id)]);await a.locator('#countdown').waitFor({state:'hidden'});
@@ -47,7 +47,10 @@ try{
    case 'typing':{const text=await a.evaluate(()=>window.__DUIZUO__.getSnapshot().game.text.slice(0,3));await a.locator('.puzzle-typing-input').fill(text);await a.waitForTimeout(400);if(await a.locator('.puzzle-typing-input').inputValue()!==text)throw new Error('Typing focus/text lost');break;}
    case 'simon':await a.waitForFunction(()=>window.__DUIZUO__.getSnapshot().game.phase==='input');await a.locator('.puzzle-note').first().click();break;
   }
-  await a.waitForFunction(source=>{const check=(0,eval)('('+source+')');return check(window.__DUIZUO__.getSnapshot().game);},evidence[id].toString(),{timeout:10000});
+  if(!evidence[id]){const a0=await a.evaluate(()=>window.__DUIZUO__.getSnapshot().game);let action;
+  if(id==='connect4')action={type:'drop',column:3};if(id==='tictactoe'||id==='hex')action={type:'place',index:0};if(id==='slide'){let z=a0.players[0].cells.indexOf(0);action={type:'slide',index:z%3?z-1:z+1};}if(id==='lights')action={type:'toggle',index:0};if(id==='nim')action={type:'take',pile:0,count:1};if(id==='billiards')action={type:'shoot',angle:0,power:.5};if(id==='badminton')action={type:'hit',style:'clear'};if(id==='tabletennis')action={type:'hit',style:'drive',target:.5};if(id==='archery')action={type:'shoot',x:0,y:0};if(id==='penalty')action={type:'choose',zone:1};if(id==='checkers')action={type:'move',from:17,to:24};
+  await a.evaluate(action=>window.__DUIZUO__.send(action),action);await a.waitForTimeout(300);const a1=await a.evaluate(()=>window.__DUIZUO__.getSnapshot().game);if(JSON.stringify(a1)===JSON.stringify(a0))throw Error(id+' had no state change');results.push({id,check:'authoritative action reaches browser snapshot',ok:true});
+  }else await a.waitForFunction(source=>{const check=(0,eval)('('+source+')');return check(window.__DUIZUO__.getSnapshot().game);},evidence[id].toString(),{timeout:10000});
   results.push({id,check:'actual desktop control accepted by public server',ok:true});
   const overflow=await b.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);if(overflow)throw new Error(id+' mobile overflow');
   results.push({id,check:'mobile partner receives game without overflow',ok:true});

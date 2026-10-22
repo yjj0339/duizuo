@@ -7,7 +7,7 @@ import {catalog} from '../shared/catalog.js';
 const request=(socket,event,payload={})=>new Promise((resolve,reject)=>socket.timeout(3000).emit(event,payload,(e,r)=>e?reject(e):resolve(r)));
 async function connect(url){const s=io(url,{transports:['websocket'],forceNew:true,reconnection:false});await new Promise((resolve,reject)=>{s.once('connect',resolve);s.once('connect_error',reject);});s.latest=null;s.on('snapshot',v=>s.latest=v);return s;}
 async function until(fn){for(let i=0;i<150;i++){if(fn())return;await delay(20);}throw new Error('snapshot condition timed out');}
-test('real WebSocket clients can start, operate and end every one of the 20 games',async t=>{
+test('real WebSocket clients can start, operate and end every catalog game',async t=>{
  const app=await createApp({persist:false,countdownMs:0});const address=await app.listen(0);const url=`http://127.0.0.1:${address.port}`;
  try{for(const game of catalog)await t.test(game.id,async()=>{
   const a=await connect(url),b=await connect(url);let seq=1;
@@ -39,9 +39,21 @@ test('real WebSocket clients can start, operate and end every one of the 20 game
     case 'mines':actions=[{type:'open',index:0}];break;
     case 'typing':actions=[{type:'input',text:s.text.slice(0,3)}];break;
     case 'simon':await delay(Math.max(50,s.phaseEndsAt-Date.now()+100));actions=[{type:'note',note:s._sequence[0],round:0}];break;
+    case 'connect4':actions=[{type:'drop',column:3}];break;
+    case 'tictactoe':case 'hex':actions=[{type:'place',index:0}];break;
+    case 'slide':{const z=s.players[0].cells.indexOf(0);actions=s.players[0].cells.map((_,index)=>({type:'slide',index}));break;}
+    case 'lights':actions=[{type:'toggle',index:0}];break;
+    case 'nim':actions=[{type:'take',pile:0,count:1}];break;
+    case 'billiards':actions=[{type:'shoot',angle:0,power:.6}];break;
+    case 'badminton':actions=[{type:'hit',style:'clear'}];break;
+    case 'tabletennis':actions=[{type:'hit',style:'drive',target:.5}];break;
+    case 'archery':actions=[{type:'shoot',x:0,y:0}];break;
+    case 'penalty':actions=[{type:'choose',zone:2}];break;
+    case 'checkers':actions=[{type:'move',from:17,to:24}];break;
    }
    let accepted=false;for(const action of actions){const r=await request(a,'action',{seq:seq++,action});if(r.ok){accepted=true;break;}}
    assert.equal(accepted,true,`${game.id} must accept a real legal player action`);
+   if(game.id==='archery')await request(b,'action',{seq:1,action:{type:'shoot',x:0,y:0}});
    await delay(100);assert.ok(a.latest?.game&&b.latest?.game);assert.deepEqual(a.latest.game.scores,b.latest.game.scores);
    assert.equal((await request(a,'action',{seq:seq++,action:{type:'resign'}})).ok,true);await until(()=>b.latest?.room.phase==='finished');assert.equal(b.latest.game.winner,1);
    assert.equal((await request(a,'rematch')).ok,true);await until(()=>b.latest?.room.phase==='waiting');
