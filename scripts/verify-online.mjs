@@ -1,7 +1,7 @@
-import {chromium} from 'file:///D:/codexAI/.runtime/browser-tools/node_modules/pwcore/index.mjs';
+﻿import {chromium} from 'file:///D:/codexAI/.runtime/browser-tools/node_modules/pwcore/index.mjs';
 import {writeFile} from 'node:fs/promises';
 const url=process.env.TEST_URL||'https://yjj0339.github.io/duizuo/';
-const browser=await chromium.launch({headless:true,executablePath:'D:/codexAI/.runtime/browsers/chromium-1234/chrome-win64/chrome.exe',args:['--disk-cache-size=1','--media-cache-size=1']});
+const browser=await chromium.launch({headless:true,executablePath:'D:/codexAI/.runtime/browsers/chromium-1234/chrome-win64/chrome.exe',args:['--disk-cache-size=1','--media-cache-size=1','--no-proxy-server','--proxy-bypass-list=*']});
 const results=[],errors=[];
 async function waitGame(page,id,phase='playing'){await page.waitForFunction(({id,phase})=>{const s=window.__DUIZUO__?.getSnapshot();return s?.room.gameId===id&&s.room.phase===phase;},{id,phase},{timeout:30000});}
 const evidence={
@@ -14,7 +14,7 @@ const evidence={
 try{
  const ca=await browser.newContext({viewport:{width:1440,height:980}}),cb=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  const a=await ca.newPage(),b=await cb.newPage();for(const p of [a,b])p.on('pageerror',e=>errors.push(e.stack));
- await Promise.all([a.goto(url,{waitUntil:'networkidle'}),b.goto(url,{waitUntil:'networkidle'})]);
+ await Promise.all([a.goto(url,{waitUntil:'domcontentloaded'}),b.goto(url,{waitUntil:'domcontentloaded'})]);
  for(const p of [a,b])await p.waitForSelector('#connection-label.online',{timeout:30000});
  await a.locator('#nickname').fill('桃桃');await b.locator('#nickname').fill('薄荷');await a.locator('#create').click();
  await a.waitForFunction(()=>window.__DUIZUO__.getSnapshot()?.room.code);const code=await a.evaluate(()=>window.__DUIZUO__.getSnapshot().room.code);
@@ -52,7 +52,7 @@ try{
   const overflow=await b.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);if(overflow)throw new Error(id+' mobile overflow');
   results.push({id,check:'mobile partner receives game without overflow',ok:true});
   if(id==='gomoku'){
-   const oldName=await b.evaluate(()=>window.__DUIZUO__.getSnapshot().room.players[1].name);await b.reload({waitUntil:'networkidle'});await waitGame(b,id);await Promise.all([a,b].map(p=>p.locator('#countdown').waitFor({state:'hidden'})));const p=await b.evaluate(()=>window.__DUIZUO__.getSnapshot().player);if(p!==1)throw new Error('Reconnect identity lost');results.push({id,check:'reload resumes same identity and active game',ok:true,name:oldName});
+   const oldName=await b.evaluate(()=>window.__DUIZUO__.getSnapshot().room.players[1].name);await b.reload({waitUntil:'domcontentloaded'});await waitGame(b,id);await Promise.all([a,b].map(p=>p.locator('#countdown').waitFor({state:'hidden'})));const p=await b.evaluate(()=>window.__DUIZUO__.getSnapshot().player);if(p!==1)throw new Error('Reconnect identity lost');results.push({id,check:'reload resumes same identity and active game',ok:true,name:oldName});
   }
   if(['gomoku','g2048','sudoku','tanks'].includes(id))await b.screenshot({path:new URL(`../artifacts/online-${id}-mobile.png`,import.meta.url).pathname.replace(/^\//,''),fullPage:true});
   if(await a.evaluate(()=>window.__DUIZUO__.getSnapshot().game.status!=='finished'))await a.locator('#resign').click();await Promise.all([waitGame(a,id,'finished'),waitGame(b,id,'finished')]);
@@ -66,3 +66,5 @@ try{
  await ca.close();await cb.close();
 }catch(e){errors.push(e.stack);console.error(e.stack);}finally{await browser.close();}
 const report={url,results,errors,at:new Date().toISOString()};await writeFile(new URL('../artifacts/online-verification.json',import.meta.url),JSON.stringify(report,null,2));console.log(JSON.stringify({checks:results.length,errors},null,2));if(errors.length)process.exitCode=1;
+
+
