@@ -136,4 +136,14 @@ git add -f .github/workflows/pages.yml && git commit -m "ci: enable Pages auto p
 
 页面只托管前端，联机服务始终运行在本机。
 
+> **网络受限时怎么推送**：本机到 `api.github.com` 的链路有时会经代理抖动（TLS EOF / 连接重置），此时 `git push` 会失败。仓库自带一条 API 通道作为替代：
+>
+> ```bash
+> node qa\api-commit-files.mjs main <要改的文件...>   # 只提交指定文件
+> node qa\api-push.mjs <本地提交> main               # 推送整条本地提交
+> node qa\api-publish.mjs                            # 直接发布站点到 gh-pages 并触发 Pages 重建
+> ```
+>
+> `gh` 直连时需绕过代理：`$env:NO_PROXY='api.github.com,github.com,raw.githubusercontent.com'`。
+
 公开仓库不包含访问令牌、隧道凭据、数据库或用户浏览器资料。
