@@ -103,7 +103,7 @@ export class AiClient {
   ensureRapfi() {
     if (this.rapfi || this.rapfiFailed) return this.rapfi
     const baseUrl = import.meta.env?.BASE_URL || '/'
-    this.rapfi = new Worker(`${baseUrl}rapfi-worker.js`)
+    this.rapfi = new Worker(`${baseUrl}rapfi-worker.js?v=3.0.1`)
     this.rapfi.onmessage = (event) => this.handle(event.data, 'rapfi')
     this.rapfi.onerror = (event) => this.disableRapfi(new Error(event.message || 'Rapfi 工作线程异常'))
     return this.rapfi
@@ -114,7 +114,7 @@ export class AiClient {
     const requestId = ++this.counter
     return new Promise((resolve, reject) => {
       const timeoutMs = payload.type === 'warmup'
-        ? 30000
+        ? 180000
         : source === 'rapfi'
           ? Math.max(15000, (Number(payload.budget) || 0) + 10000)
           : 20000

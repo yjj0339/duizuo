@@ -1,7 +1,7 @@
 ﻿import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 const gh='D:/codexAI/.runtime/github-cli/gh.exe';
-const git='E:/Program Files/Git/cmd/git.exe';
+const git='D:/codexAI/.toolchains/git/cmd/git.exe';
 const env={...process.env,GH_CONFIG_DIR:'D:/codexAI/.runtime/github-config'};
 const REPO='yjj0339/duizuo', CWD='D:/codexAI/duizuo';
 const api=(a,input)=>execFileSync(gh,['api',...a],{env,encoding:'utf8',maxBuffer:1<<26,input:input?JSON.stringify(input):undefined}).trim();

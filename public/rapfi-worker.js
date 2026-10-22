@@ -52,7 +52,14 @@ function findBytes(haystack, needle, limit = haystack.length) {
 async function prepareEngineData() {
   const response = await fetch(enginePath(ENGINE_DATA_FILE), { cache: 'force-cache' })
   if (!response.ok) throw new Error(`NNUE 数据下载失败：HTTP ${response.status}`)
-  const bytes = new Uint8Array(await response.arrayBuffer())
+  let bytes;
+  if(response.body?.getReader){
+    const reader=response.body.getReader(),parts=[];let loaded=0,last=0;
+    const total=Number(response.headers.get('Content-Length'))||10060311;
+    for(;;){const {done,value}=await reader.read();if(done)break;parts.push(value);loaded+=value.length;
+      if(loaded-last>262144){postStatus(null,'model-download',{loaded,total});last=loaded;}}
+    bytes=new Uint8Array(loaded);let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.length;}
+  }else bytes=new Uint8Array(await response.arrayBuffer())
   if (bytes.length < FREESTYLE_WEIGHT_END) throw new Error('NNUE 数据包不完整')
 
   const digest = await self.crypto.subtle.digest('SHA-256', bytes.subarray(FREESTYLE_WEIGHT_START, FREESTYLE_WEIGHT_END))
