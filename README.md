@@ -91,13 +91,13 @@ SQLite 每 2 秒及关键房间事件保存私有检查点。服务重启后可�
 |------|------|
 | `npm test` | 规则、隐藏信息、恢复、SQLite 检查点、AI 战术、Socket.IO / HTTPS 网络测试 |
 | `npm run build` | 生成 `dist/` |
-| `node qa/online-smoke.mjs` | 32 款游戏的双客户端真实联机开局到结算 |
+| `node scripts/verify-online.mjs` | 32 款游戏的双客户端真实联机开局到结算 |
 | `node scripts/engine-playthrough.mjs` | 只读玩家视图的测试控制器，模拟 32 款从开局到结算 |
-| `node qa/visual-audit.cjs` | 32 款 × 3 视口截图，并自动检测溢出 / 深色回退 / 触控尺寸 |
+| `node scripts/audit-v3.mjs` | 32 款 × 3 视口截图，并自动检测溢出 / 深色回退 / 触控尺寸 |
 | `node scripts/inspect-ui.mjs` | 用 D 盘 Playwright 检查 320/390px 渲染与双浏览器联机 |
 | `node scripts/verify-online.mjs` | 检查线上发布后的实际双浏览器操作 |
 | `node scripts/verify-resilience.mjs` | 真实浏览器关闭 125 秒、重新打开、恢复及备用通道 |
-| `node scripts/verify-ai-ui.mjs` | 32 款 AI 手机出招、单人存档恢复及离线运行 |
+| `node scripts/verify-quality-ui.mjs` | 32 款 AI 手机出招、单人存档恢复及离线运行 |
 | `node scripts/ai-playthrough.mjs` | 专用 AI 与基础测试控制器的完整对局基准 |
 
 浏览器验证依赖本机 D 盘测试工具（`D:/codexAI/.runtime/browser-tools`、`D:/codexAI/.runtime/browsers`）。

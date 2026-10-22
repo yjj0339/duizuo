@@ -26,6 +26,11 @@ let primeSearchGate = null
 function enginePath(file) {
   return new URL(`./engine/${file}`, self.location.href).href
 }
+async function binaryResponse(file){
+  const origin=new URL(self.location.href).searchParams.get('assets');
+  if(origin){try{const u=new URL(origin);if(u.protocol==='https:'||u.protocol==='http:'&&['localhost','127.0.0.1'].includes(u.hostname)){const r=await fetch(new URL('/engine/'+file,u),{cache:'force-cache',signal:AbortSignal.timeout(120000)});if(r.ok)return r;}}catch{}}
+  return fetch(enginePath(file),{cache:'force-cache'});
+}
 
 function postStatus(requestId, phase, extra = {}) {
   self.postMessage({ type: 'status', requestId, phase, ...extra })
@@ -50,7 +55,7 @@ function findBytes(haystack, needle, limit = haystack.length) {
 }
 
 async function prepareEngineData() {
-  const response = await fetch(enginePath(ENGINE_DATA_FILE), { cache: 'force-cache' })
+  const response = await binaryResponse(ENGINE_DATA_FILE)
   if (!response.ok) throw new Error(`NNUE 数据下载失败：HTTP ${response.status}`)
   let bytes;
   if(response.body?.getReader){
@@ -61,6 +66,7 @@ async function prepareEngineData() {
     bytes=new Uint8Array(loaded);let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.length;}
   }else bytes=new Uint8Array(await response.arrayBuffer())
   if (bytes.length < FREESTYLE_WEIGHT_END) throw new Error('NNUE 数据包不完整')
+  if(bytesToHex(new Uint8Array(await self.crypto.subtle.digest('SHA-256',bytes)))!=='4291806164e9c2b03eaf1450e17e74234086569d26055fcd71dbb55f8d486607')throw new Error('NNUE 完整数据包校验失败');
 
   const digest = await self.crypto.subtle.digest('SHA-256', bytes.subarray(FREESTYLE_WEIGHT_START, FREESTYLE_WEIGHT_END))
   const hash = bytesToHex(new Uint8Array(digest))
@@ -180,8 +186,14 @@ async function ensureEngine(requestId) {
     const data = await prepareEngineData()
     importScripts(enginePath('rapfi.js'))
     if (typeof self.Rapfi !== 'function') throw new Error('冠军引擎文件未就绪')
+    // Keep network download outside the model-initialisation deadline.
+    const wasmResponse=await binaryResponse('rapfi-single-simd128.wasm');
+    if(!wasmResponse.ok)throw new Error(`WASM 下载失败：HTTP ${wasmResponse.status}`);
+    const wasmBinary=new Uint8Array(await wasmResponse.arrayBuffer());
+    if(bytesToHex(new Uint8Array(await self.crypto.subtle.digest('SHA-256',wasmBinary)))!=='8aa112fc2be8f8c0de9e8296a963a03533356f7ecfe150ff9f4bc93ac4040cf8')throw new Error('WASM 完整性校验失败');
     modelGate = createModelGate()
     const enginePromise = self.Rapfi({
+      wasmBinary,
       getPreloadedPackage: () => data.buffer,
       locateFile: (file) => enginePath(file === 'rapfi.data' ? 'rapfi.data' : file),
       onReceiveStdout: handleStdout,

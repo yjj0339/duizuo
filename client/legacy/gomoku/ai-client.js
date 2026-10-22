@@ -48,7 +48,8 @@ export class AiGameSessionTracker {
 }
 
 export class AiClient {
-  constructor(onProgress = () => {}) {
+  constructor(onProgress = () => {}, assetOrigin = '') {
+    this.assetOrigin=assetOrigin;
     this.onProgress = onProgress
     this.requests = new Map()
     this.counter = 0
@@ -103,7 +104,7 @@ export class AiClient {
   ensureRapfi() {
     if (this.rapfi || this.rapfiFailed) return this.rapfi
     const baseUrl = import.meta.env?.BASE_URL || '/'
-    this.rapfi = new Worker(`${baseUrl}rapfi-worker.js?v=3.0.1`)
+    this.rapfi = new Worker(`${baseUrl}rapfi-worker.js?v=3.0.2${this.assetOrigin?'&assets='+encodeURIComponent(this.assetOrigin):''}`)
     this.rapfi.onmessage = (event) => this.handle(event.data, 'rapfi')
     this.rapfi.onerror = (event) => this.disableRapfi(new Error(event.message || 'Rapfi 工作线程异常'))
     return this.rapfi
