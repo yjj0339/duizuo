@@ -59,7 +59,7 @@ try{
    const oldName=await b.evaluate(()=>window.__DUIZUO__.getSnapshot().room.players[1].name);await b.reload({waitUntil:'domcontentloaded'});await waitGame(b,id);await Promise.all([a,b].map(p=>p.locator('#countdown').waitFor({state:'hidden'})));const p=await b.evaluate(()=>window.__DUIZUO__.getSnapshot().player);if(p!==1)throw new Error('Reconnect identity lost');results.push({id,check:'reload resumes same identity and active game',ok:true,name:oldName});
   }
   if(['gomoku','g2048','sudoku','tanks'].includes(id))await b.screenshot({path:new URL(`../artifacts/online-${id}-mobile.png`,import.meta.url).pathname.replace(/^\//,''),fullPage:true});
-  if(await a.evaluate(()=>window.__DUIZUO__.getSnapshot().game.status!=='finished'))await a.locator('#resign').click();await Promise.all([waitGame(a,id,'finished'),waitGame(b,id,'finished')]);
+  if(await a.evaluate(()=>window.__DUIZUO__.getSnapshot().game.status!=='finished')){await a.locator('#resign').click();await a.locator('#confirm-resign').click();}await Promise.all([waitGame(a,id,'finished'),waitGame(b,id,'finished')]);
   if(!await b.locator('#game-result').isVisible())throw new Error('Partner result is not visible');
   results.push({id,check:'both clients reach result',ok:true});
   await a.locator('#result-lobby').click();await a.waitForTimeout(220);if(!await a.locator('#lobby').isVisible())throw new Error('Return to lobby was overwritten by a snapshot');

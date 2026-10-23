@@ -1,10 +1,11 @@
 import {io} from 'socket.io-client';
 const storage={get(key){try{return JSON.parse(localStorage.getItem(key));}catch{return null;}},set(key,value){try{value?localStorage.setItem(key,JSON.stringify(value)):localStorage.removeItem(key);}catch{}}};
 export class Connection{
- constructor(url,{snapshot,identity,state,reset,room='',mode='auto'}={}){
+ constructor(url,{snapshot,identity,state,reset,room='',mode='auto',isActive=()=>!document.hidden,allowResumeFrom=''}={}){
+  this.isActive=isActive;
   this.url=url;this.callbacks={snapshot,identity,state,reset};this.mode=mode;this.alive=true;this.connected=false;this.ready=false;this.http=false;this.token=null;this.revision=0;
   let saved=storage.get('duo:session-v2');if(!saved){try{saved=JSON.parse(sessionStorage.getItem('duo:session'));}catch{}}
-  if(saved?.token&&(!room||saved.code===room)&&(saved.server===url||!room))this.saved=saved;
+  if(saved?.token&&(!room||saved.code===room)&&(saved.server===url||saved.server===allowResumeFrom||!room))this.saved=saved;
   if(mode==='http')this.startHTTP();else this.startSocket();
  }
  setState(label,state){if(this.alive)this.callbacks.state?.(label,state);}
@@ -19,7 +20,7 @@ export class Connection{
   this.socket.on('connect_error',()=>this.setState('连接恢复中 · 正在尝试备用通道','connecting'));
     this.socket.on('session-replaced',()=>{this.replaced=true;this.connected=false;clearTimeout(this.fallback);this.socket.removeAllListeners();this.socket.disconnect();this.setState('本局已在另一个页面打开','offline');});
  }
- async restore(){if(this.replaced||!this.alive)return;if(this.restoring)return this.restoring;this.restoring=(async()=>{const token=this.token||this.saved?.token;if(token){const r=await this.request('resume',{token});if(r.ok)this.remember(r);else if(r.code==='SESSION'){this.forget();this.setState('原房间已关闭 · 可以新开一局','online');}}await this.presence(!document.hidden);})();try{await this.restoring;}finally{this.restoring=null;}}
+ async restore(){if(this.replaced||!this.alive)return;if(this.restoring)return this.restoring;this.restoring=(async()=>{const token=this.token||this.saved?.token;if(token){const r=await this.request('resume',{token});if(r.ok)this.remember(r);else if(r.code==='SESSION'){this.forget();this.setState('原房间已关闭 · 可以新开一局','online');}}await this.presence(this.isActive?.()??!document.hidden);})();try{await this.restoring;}finally{this.restoring=null;}}
  async fetchJSON(path,options={}){const r=await fetch(this.url+path,{...options,cache:'no-store',signal:AbortSignal.timeout(path.includes('snapshot')?25000:7000)});return r.json();}
  async startHTTP(){
   if(!this.alive||this.http||this.replaced)return;this.http=true;this.ready=false;clearTimeout(this.fallback);this.socket?.removeAllListeners();this.socket?.disconnect();this.connected=false;

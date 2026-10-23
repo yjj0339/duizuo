@@ -1,7 +1,7 @@
 import {chromium} from 'file:///D:/codexAI/.runtime/browser-tools/node_modules/pwcore/index.mjs';
 import {mkdir,writeFile} from 'node:fs/promises';import assert from 'node:assert/strict';
 import {catalog} from '../shared/catalog.js';import {engines} from '../shared/engines.js';import {createApp} from '../server/index.js';
-const dir='D:/codexAI/duizuo/artifacts/upgrade-v5';await mkdir(dir+'/video',{recursive:true});
+const dir=process.env.ARTIFACT_DIR||'D:/codexAI/duizuo/artifacts/upgrade-v5';await mkdir(dir+'/video',{recursive:true});
 const cases=process.env.GAME_IDS?catalog.filter(g=>process.env.GAME_IDS.split(',').includes(g.id)):catalog;
 const app=await createApp({persist:false,countdownMs:100}),address=await app.listen(0),base='http://127.0.0.1:'+address.port;
 const browser=await chromium.launch({headless:true,executablePath:'D:/codexAI/.runtime/browsers/chromium-1234/chrome-win64/chrome.exe',args:['--no-proxy-server','--disable-quic']}),checks=[],errors=[];
@@ -63,7 +63,7 @@ try{
   await p.locator('#pause-local').click();await p.waitForTimeout(80);
   const frozen=await p.evaluate(()=>({canvas:[...document.querySelectorAll('#game-root canvas')].map(c=>c.toDataURL()),moves:__DUIZUO__.getLocal().view.scores,animations:document.querySelector('#game-root').getAnimations({subtree:true}).filter(a=>a.playState==='running').length}));
   await p.waitForTimeout(160);assert.equal(await p.evaluate(()=>JSON.stringify([...document.querySelectorAll('#game-root canvas')].map(c=>c.toDataURL()))),JSON.stringify(frozen.canvas),id+' paused Canvas');assert.equal(frozen.animations,0,id+' paused DOM animations');
-  await p.locator('#resume-play').click();await p.waitForTimeout(350);
+  await p.locator('#menu-continue').click();await p.waitForTimeout(350);
   assert.equal(await p.locator('.match-ghost,.puzzle-motion-tile,.puzzle-line-sweep').count(),0,id+' transient cleanup');
   await p.screenshot({path:dir+'/'+id+'-played.png',fullPage:true});
   checks.push({id,check:'actual control, state feedback, pause and transient cleanup',event});

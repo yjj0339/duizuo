@@ -22,7 +22,7 @@ elseif(-not (Test-Path -LiteralPath (Join-Path $taskRoot 'dist\index.html'))){th
 $localUrl="http://127.0.0.1:$Port"
 $stateFile=Join-Path $runtimeDir 'state.json'
 $oldState=$null;if(Test-Path -LiteralPath $stateFile){try{$oldState=Get-Content -LiteralPath $stateFile -Raw|ConvertFrom-Json}catch{}}
-$ready=$false;try{$health=Invoke-RestMethod -Uri "$localUrl/health" -TimeoutSec 2;if($health.ok -and $health.name -eq 'DUIZUO' -and $health.version -eq '1.0.0'){throw '该端口运行旧版服务，请使用新版默认 4390 端口。旧服务不会被自动停止。'};$ready=$health.ok -and $health.name -eq 'DUIZUO' -and $health.version -eq '3.0.0'}catch{if($_.Exception.Message -like '*旧版服务*'){throw}}
+$ready=$false;try{$health=Invoke-RestMethod -Uri "$localUrl/health" -TimeoutSec 2;if($health.ok -and $health.name -eq 'DUIZUO' -and $health.version -eq '1.0.0'){throw '该端口运行旧版服务，请使用新版默认 4390 端口。旧服务不会被自动停止。'};$ready=$health.ok -and $health.name -eq 'DUIZUO' -and $health.version -match '^3\.'}catch{if($_.Exception.Message -like '*旧版服务*'){throw}}
 $serverProcess=$null
 if(-not $ready){
  $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'

@@ -2,7 +2,11 @@ import {engines} from '../shared/engines.js';
 import {chooseMove} from './legacy/mint/ai.js';
 export function shiftView(value,shift){const v=structuredClone(value);function walk(o){if(!o||typeof o!=='object')return;for(const[k,n]of Object.entries(o))if(typeof n==='number'&&n>0&&(/At$|Until$/.test(k)||k==='now'||k==='until'))o[k]=n+shift;else if(n&&typeof n==='object')walk(n);}walk(v);return v;}
 const saveKey='duo:solo-v2';
-export function savedSolo(){try{const s=JSON.parse(localStorage.getItem(saveKey));return s?.version===2&&engines[s.id]&&s.state?.status==='playing'?s:null;}catch{return null;}}
+const savesKey='duo:solo-games-v3';
+const validSave=s=>s?.version===2&&Object.hasOwn(engines,s.id)&&s.state?.status==='playing';
+function readSaves(){try{const s=JSON.parse(localStorage.getItem(savesKey));return s&&typeof s==='object'&&!Array.isArray(s)?s:{};}catch{return {};}}
+export function savedSolos(){const saves=readSaves();try{const legacy=JSON.parse(localStorage.getItem(saveKey));if(validSave(legacy)&&!saves[legacy.id])saves[legacy.id]=legacy;}catch{}return Object.values(saves).filter(validSave).sort((a,b)=>(b.savedAt||0)-(a.savedAt||0));}
+export function savedSolo(id){return savedSolos().find(s=>!id||s.id===id)||null;}
 export class Solo{
  constructor(id,{mode='practice',level='master',human=0,daily=false,saved=null,engineOrigin='',onError=()=>{}}={}){
   this.engineOrigin=engineOrigin;
@@ -23,6 +27,6 @@ export class Solo{
  view(player){return shiftView(engines[this.id].view(this.state,player),Date.now()-this.now());}
  tick(dt){if(this.pausedAt!=null||this.engineLoadingAt!=null||document.hidden||this.state.status==='finished')return;const now=this.now();engines[this.id].tick?.(this.state,dt,now);if(this.mode==='ai'&&this.id==='gomoku'&&this.level==='master'&&!this.busy&&this.state.turn!==this.human&&this.state.status==='playing')this.thinkGomoku();if(this.worker&&!this.busy&&this.state.status==='playing'){this.busy=true;this.worker.postMessage({key:this.key,id:this.id,view:engines[this.id].view(this.state,1-this.human),player:1-this.human,level:this.level,now,brain:this.aiBrain});}if(Date.now()-(this.savedAt||0)>2000){this.savedAt=Date.now();this.save();}}
  async thinkGomoku(){this.busy=true;const original=this.state.board.join(',');try{const ai=await this.gomokuClient(),p=1-this.human;const r=await ai.think(this.state.board.map(n=>n+1),p+1,4,[],this.key+':'+this.moves);if(this.destroyed||this.pausedAt!=null||document.hidden||original!==this.state.board.join(',')||this.state.turn!==p)return;this.lastAnalysis=r;this.engineStatus=(r.engine?.includes('Rapfi')?'Rapfi NNUE':'深度搜索 AI（神经模型暂不可用）')+(r.depth?' · 搜索深度 '+r.depth:'');if(engines.gomoku.action(this.state,p,{type:'place',index:r.y*15+r.x},this.now()))this.moves++;}catch{if(!this.destroyed){this.engineStatus='AI 计算失败，可退出后继续存档';this.onError(this.engineStatus);}}finally{this.busy=false;}}
- save(){try{localStorage.setItem(saveKey,JSON.stringify({version:2,id:this.id,mode:this.mode,level:this.level,human:this.human,seed:this.seed,daily:this.daily,state:this.state,now:this.now(),brain:this.aiBrain,ui:this.annotations}));}catch{}}
+ save(){try{const saves=Object.fromEntries(savedSolos().map(s=>[s.id,s])),saved={version:2,id:this.id,mode:this.mode,level:this.level,human:this.human,seed:this.seed,daily:this.daily,state:this.state,now:this.now(),brain:this.aiBrain,ui:this.annotations,savedAt:Date.now()};if(saved.state.status==='playing')saves[this.id]=saved;else delete saves[this.id];localStorage.setItem(savesKey,JSON.stringify(saves));localStorage.setItem(saveKey,JSON.stringify(saved));this.saveFailed=false;return true;}catch{if(!this.saveFailed)this.onError?.('浏览器未能保存进度，请检查存储空间或隐私设置');this.saveFailed=true;return false;}}
  destroy(){this.save();this.destroyed=true;this.worker?.terminate();this.gomoku?.dispose();}
 }

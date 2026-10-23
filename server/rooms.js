@@ -70,13 +70,13 @@ export class Rooms {
     }
     if(event==='action') {
       if(room.phase!=='playing'||!room.game)return fail('等待双方准备后开始');
-      if(room.pausedAt!=null)return fail('对局已保护暂停，等待双方回来','PAUSED');
       const gameNow=now-(room.timeShift||0);
-      if(gameNow<room.startedAt)return fail('双方就位，倒计时后开始','COUNTDOWN');
       if(!Number.isSafeInteger(payload.seq)||payload.seq<=p.lastSeq)return fail('这次操作已处理，请重试','DUPLICATE');
       const a=payload.action;if(!a||typeof a!=='object'||Array.isArray(a)||typeof a.type!=='string'||JSON.stringify(a).length>4096)return fail('操作无效');
       if(p.rateAt!==Math.floor(now/1000)){p.rateAt=Math.floor(now/1000);p.rateCount=0;}if(++p.rateCount>120)return fail('操作过快，请稍等');
       if(a.type==='resign'){p.lastSeq=payload.seq;room.game.status='finished';room.game.winner=1-slot;room.game.message='对方认输';this.finish(room,now);return {ok:true};}
+      if(room.pausedAt!=null)return fail('对局已保护暂停，等待双方回来','PAUSED');
+      if(gameNow<room.startedAt)return fail('双方就位，倒计时后开始','COUNTDOWN');
       let accepted=false;try{accepted=this.engines[room.gameId].action(room.game,slot,a,gameNow)===true;}catch{return fail('操作未被接受');}
       if(!accepted)return fail('当前不能这样操作','MOVE');p.lastSeq=payload.seq;
       if(room.game.status==='finished')this.finish(room,now);return {ok:true};

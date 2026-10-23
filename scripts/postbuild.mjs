@@ -3,6 +3,7 @@
 import { readFileSync, writeFileSync, existsSync, copyFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {release} from '../shared/release.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -15,4 +16,5 @@ if (existsSync(endpoint)) {
   console.log('✔ 已复制 runtime-endpoint.json 到 dist');
 }
 writeFileSync(join(dist, '.nojekyll'), '');
+writeFileSync(join(dist, 'version.json'), JSON.stringify(release));
 console.log('✔ 已生成 dist/.nojekyll');
