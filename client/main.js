@@ -167,7 +167,11 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdat
 
 function validServer(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password&&(!location.protocol.startsWith('https')||u.protocol==='https:'||['localhost','127.0.0.1'].includes(u.hostname));}catch{return false;}}
 async function discover(refresh=false){if(!refresh&&validServer(params.get('server')))return new URL(params.get('server')).origin;if(['localhost','127.0.0.1'].includes(location.hostname)||location.hostname.endsWith('.trycloudflare.com'))return location.origin;
- for(const url of ['./runtime-endpoint.json','https://raw.githubusercontent.com/yjj0339/duizuo/main/runtime-endpoint.json'])try{const r=await fetch(url+'?t='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(r.ok){const cfg=await r.json();if(validServer(cfg.server))return new URL(cfg.server).origin;}}catch{}
+ const endpoints=['./runtime-endpoint.json','https://raw.githubusercontent.com/yjj0339/duizuo/main/runtime-endpoint.json'];
+ // The launcher updates main immediately; a cached Pages build can still carry
+ // yesterday's tunnel. Recovery must consult the live registry first.
+ if(refresh)endpoints.reverse();
+ for(const url of endpoints)try{const r=await fetch(url+'?t='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(r.ok){const cfg=await r.json();if(validServer(cfg.server))return new URL(cfg.server).origin;}}catch{}
  const old=store.get('server');return validServer(old)?new URL(old).origin:'';
 }
 async function recoverEndpoint(){if(endpointChecking||connection==='online'||!serverURL.endsWith('.trycloudflare.com'))return;endpointChecking=true;try{const candidate=await discover(true);if(candidate&&candidate!==serverURL){const r=await fetch(candidate+'/health',{cache:'no-store',signal:AbortSignal.timeout(7000)}),health=await r.json();if(health.ok&&health.name==='DUIZUO'&&connection!=='online'){const previous=serverURL;connect(candidate,previous);const url=new URL(location.href);url.searchParams.set('server',candidate);history.replaceState(history.state,'',url.href);toast('已找到更新后的对战入口，正在恢复原房间');}}}catch{}finally{endpointChecking=false;}}
