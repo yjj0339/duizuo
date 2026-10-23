@@ -1,12 +1,12 @@
 import Sudoku from '../client/legacy/sudoku/engine.js';
 // Stable DOM renderers: snapshots update nodes without resetting focus or IME.
 function mount(root, send, context, hint) {
-  const doc = root.ownerDocument, cleanups = [], timers = new Set(), player = context.player;
+  const doc = root.ownerDocument, cleanups = [], timers = new Set(), animations = new Set(), player = context.player;
   let current = null, destroyed = false, lastScores = null;
   const reduced = Boolean(context.reducedMotion);
   const el = (tag, className, text) => { const node = doc.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = text; return node; };
   const listen = (target, name, fn, options) => { target.addEventListener(name, fn, options); cleanups.push(() => target.removeEventListener(name, fn, options)); };
-  const command = action => { if (!destroyed && current?.status === 'playing') { send(action); context.feedback?.('tap'); } };
+  const command = action => { if (!destroyed && current?.status === 'playing' && !context.isPaused?.() && !doc.hidden) { return send(action); } return false; };
   const button = (text, action, className = '') => {
     const b = el('button', `game-button puzzle-button ${className}`, text); b.type = 'button';
     listen(b, 'click', () => command(typeof action === 'function' ? action() : action)); return b;
@@ -36,6 +36,12 @@ function mount(root, send, context, hint) {
   }
   const publicApi = {
     doc, el, listen, button, command, keyboard, flash, content, controls, player, reduced,
+    cleanup(fn){cleanups.push(fn);},
+    animate(node,frames,duration=220,done=()=>{}){
+      if(reduced||!node?.animate){done();return null;}
+      const a=node.animate(frames,{duration,easing:'cubic-bezier(.2,.8,.3,1)'});animations.add(a);
+      a.finished.then(()=>{animations.delete(a);done();},()=>{animations.delete(a);done();});return a;
+    },
     get view() { return current; },
     update(view) {
       current = view;
@@ -52,6 +58,7 @@ function mount(root, send, context, hint) {
       destroyed = true;
       for (const handle of timers) clearTimeout(handle);
       timers.clear();
+      for (const a of animations) a.cancel();animations.clear();
       for (const cleanup of cleanups.splice(0)) cleanup();
       root.replaceChildren(); root.classList.remove('puzzle-game'); root.removeAttribute('tabindex');
     }
@@ -88,7 +95,8 @@ function directionPad(ui, sendDirection) {
 
 function render2048(root, send, context) {
   const ui = mount(root, send, context, '滑动棋盘 / 方向键 / WASD / 方向按钮。相同数字每步只合并一次，合并值计分；双方使用独立的同种子随机序列。'), race = ui.el('div', 'puzzle-race puzzle-2048-race');
-  const grids = [], tiles = [], labels = [], previous = [];
+  const grids = [], tiles = [], labels = [], previous = [], moves = [], flying=[[],[]];
+  ui.cleanup(()=>flying.flat().forEach(n=>n.remove()));
   for (let i = 0; i < 2; i++) {
     const box = panel(ui, i, i === ui.player ? 'puzzle-own' : 'puzzle-opponent'), grid = ui.el('div', 'puzzle-2048-grid'); grid.setAttribute('role', 'img'); grid.setAttribute('aria-label', `${i === ui.player ? '你的' : '对方'} 2048 棋盘`);
     const cells = Array.from({ length: 16 }, () => ui.el('div', 'puzzle-2048-tile')); grid.append(...cells);
@@ -113,17 +121,24 @@ function render2048(root, send, context) {
     update(view) {
       ui.update(view);
       view.players.forEach((p, i) => {
+        const motion=p.motion,changed=moves[i]!==undefined&&p.moves!==moves[i],consecutive=p.moves===moves[i]+1;moves[i]=p.moves;
+        if(changed){flying[i].forEach(n=>n.remove());flying[i]=[];tiles[i].forEach(n=>{if(n.style)n.style.visibility='';});}
         p.cells.forEach((value, index) => {
           const node = tiles[i][index], before = previous[i][index];
           node.textContent = value || '';
           node.dataset.level = value ? String(Math.min(12, Math.log2(value))) : '0';
-          if (value && before !== value) {
-            /* 合并：数值翻倍且场上存在半个数值 → 触发回弹 + 光晕；其余为新落子。 */
-            const merged = value >= 4 && value > before && p.cells.some(v => v === value / 2);
-            ui.flash(node, merged ? 'pop' : 'fresh', merged ? 560 : 400);
-          }
           previous[i][index] = value;
         });
+        // Exact source/destination paths come from the accepted server move.
+        // Never guess merges by inspecting the already compacted board.
+        if(changed&&consecutive&&motion&&!ui.reduced&&grids[i].getBoundingClientRect){
+          const bounds=grids[i].getBoundingClientRect(),version=p.moves;
+          for(const step of motion.slides){const source=tiles[i][step.from].getBoundingClientRect(),target=tiles[i][step.to].getBoundingClientRect(),ghost=ui.el('div','puzzle-2048-tile puzzle-motion-tile',String(step.value));ghost.dataset.level=String(Math.min(12,Math.log2(step.value)));
+            Object.assign(ghost.style,{left:`${source.left-bounds.left}px`,top:`${source.top-bounds.top}px`,width:`${source.width}px`,height:`${source.height}px`});ghost.setAttribute('aria-hidden','true');grids[i].append(ghost);flying[i].push(ghost);tiles[i][step.to].style.visibility='hidden';
+            ui.animate(ghost,[{transform:'translate(0,0)'},{transform:`translate(${target.left-source.left}px,${target.top-source.top}px)`}],155,()=>{ghost.remove();if(moves[i]===version){tiles[i][step.to].style.visibility='';if(motion.merged.includes(step.to))ui.animate(tiles[i][step.to],[{transform:'scale(1.12)'},{transform:'scale(1)'}],140);}});
+          }
+          if(motion.spawn){const n=tiles[i][motion.spawn.index];ui.animate(n,[{opacity:0,transform:'scale(.45)'},{opacity:0,transform:'scale(.45)',offset:.65},{opacity:1,transform:'scale(1)'}],240);}
+        }
         labels[i].textContent = `最高 ${p.highest} · ${p.moves} 步${p.stuck ? ' · 无可用移动' : ''}`;
         grids[i].setAttribute('aria-label', `${i === ui.player ? '你的' : '对方'}棋盘：${p.cells.map(n => n || '空').join('，')}`);
       });
@@ -307,7 +322,7 @@ function renderSimon(root, send, context) {
   /* 音乐盒：外框 + 内凹音板井 */
   const stage = ui.el('div', 'puzzle-simon-stage'), pad = ui.el('div', 'puzzle-simon-pad');
   const progress = ui.el('div', 'puzzle-progress-pair');
-  const names = ['Do', 'Re', 'Mi', 'Sol'], symbols = ['●', '◆', '▲', '■'];
+  const names = ['Do', 'Re', 'Mi', 'Sol'], symbols = ['●', '◆', '▲', '■'];let lastCue=null,lastNoteCount=-1;
   const action = note => ({ type: 'note', note, round: ui.view?.round });
   const buttons = names.map((name, i) => {
     const b = ui.el('button', `puzzle-note puzzle-note-${i}`);
@@ -325,6 +340,8 @@ function renderSimon(root, send, context) {
     update(view) {
       ui.update(view); round.textContent = `第 ${Math.min(view.totalRounds, view.round + 1)} / ${view.totalRounds} 轮 · ${view.length} 个音符`;
       const own = view.players[ui.player]; phase.textContent = view.phase === 'show' ? '看清顺序…' : view.phase === 'input' ? own.done ? own.success ? '复现成功，等待对方' : '本轮失误，下一轮继续' : `轮到你了 · 剩余 ${Math.max(0, Math.ceil((view.phaseEndsAt - view.now) / 1000))} 秒` : '准备下一轮';
+      const cueKey=view.cue===null?null:`${view.round}:${view.cueIndex}`;if(cueKey&&cueKey!==lastCue&&!context.isPaused?.())context.feedback?.('note'+view.cue);lastCue=cueKey;
+      if(lastNoteCount>=0&&own.position>lastNoteCount&&view.phase!=='show')context.feedback?.('note'+own.lastNote);lastNoteCount=own.position;
       buttons.forEach((b, i) => { b.dataset.lit = String(view.cue === i); b.disabled = view.status !== 'playing' || view.phase !== 'input' || own.done; });
       view.players.forEach((p, i) => { labels[i].textContent = `${i === ui.player ? '你' : '对方'}：${p.position}/${view.length}${p.done ? p.success ? ' · 成功' : ' · 本轮结束' : ''}`; });
     }, destroy: ui.destroy
@@ -333,7 +350,8 @@ function renderSimon(root, send, context) {
 
 function renderTetris(root, send, context) {
   const ui = mount(root, send, context, '← → 移动，↓ 软降，↑ / X 顺时针旋转，Z 逆时针，空格瞬降。触屏用下方按钮。消 2/3/4 行发送 1/2/4 障碍行，落块时先抵消，再接收剩余障碍；对手封顶获胜。');
-  const race = ui.el('div', 'puzzle-race puzzle-tetris-race'), grids = [], tiles = [], labels = [], previews = [], chips = [], boards = [];
+  const race = ui.el('div', 'puzzle-race puzzle-tetris-race'), grids = [], tiles = [], labels = [], previews = [], chips = [], boards = [], locks=[],sweeps=new Set();
+  ui.cleanup(()=>sweeps.forEach(n=>n.remove()));
   const kinds = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
   for (let i = 0; i < 2; i++) {
     const box = panel(ui, i, i === ui.player ? 'puzzle-own' : 'puzzle-opponent'), grid = ui.el('div', 'puzzle-tetris-grid'); grid.setAttribute('role', 'img'); grid.setAttribute('aria-label', `${i === ui.player ? '你的' : '对方'}方块棋盘`);
@@ -364,10 +382,11 @@ function renderTetris(root, send, context) {
         for (const [x, y] of p.ghostCells) if (x >= 0 && x < 10 && y >= 0 && y < 20 && !display[y * 10 + x].value) display[y * 10 + x] = { value: kinds.indexOf(p.active.kind) + 1, ghost: true, active: false };
         for (const [x, y] of p.activeCells) if (x >= 0 && x < 10 && y >= 0 && y < 20) display[y * 10 + x] = { value: kinds.indexOf(p.active.kind) + 1, ghost: false, active: true };
         /* 逐列碎裂：找出刚刚被消除的那一行，按列错开延迟播放淡出。 */
-        const cleared = new Set();
-        if (boards[i]) for (let y = 0; y < 20; y++) {
-          const before = boards[i].slice(y * 10, y * 10 + 10), after = p.board.slice(y * 10, y * 10 + 10);
-          if (before.every(Boolean) && !after.every(Boolean)) cleared.add(y);
+        const event=p.lockEvent,newLock=locks[i]!==undefined&&event&&event.number!==locks[i];locks[i]=event?.number||0;
+        const cleared = new Set(newLock?event.clearedRows:[]);
+        if(newLock&&!ui.reduced){
+          for(const y of cleared){const sweep=ui.el('i','puzzle-line-sweep');sweep.style.top=`${y*5}%`;sweep.setAttribute('aria-hidden','true');grids[i].append(sweep);sweeps.add(sweep);ui.animate(sweep,[{opacity:1,transform:'scaleX(.15)'},{opacity:.9,transform:'scaleX(1)',offset:.45},{opacity:0,transform:'scaleX(1.03)'}],350,()=>{sweep.remove();sweeps.delete(sweep);});}
+          for(const [x,y] of event.cells)if(y>=0&&y<20&&!cleared.has(y))ui.animate(tiles[i][y*10+x],[{filter:'brightness(1.8)'},{filter:'brightness(1)'}],230);
         }
         boards[i] = [...p.board];
         display.forEach((cell, index) => {

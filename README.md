@@ -165,3 +165,5 @@ git add -f .github/workflows/pages.yml && git commit -m "ci: enable Pages auto p
 > `gh` 直连时需绕过代理：`$env:NO_PROXY='api.github.com,github.com,raw.githubusercontent.com'`。
 
 公开仓库不包含访问令牌、隧道凭据、数据库或用户浏览器资料。
+
+2026-10-23 v5：全部 32 款接入局面操作提示、已确认动作反馈及暂停/退出清理；修正首回合时限、点球截止和过期轮次输入、球类发球位置，2048 与方块使用权威动作记录播放动画。逐款说明见 docs/2026-10-23-32款逻辑动画升级.md。

@@ -924,7 +924,7 @@ function slingScene(ctx) {
         }
         if (Number.isFinite(c.hp)) prevHp[i] = c.hp;
       });
-      if (view?.impact) impactFx = { x: view.impact.x, y: view.impact.y, t0: now };
+      if (view?.impact && this.impactKey !== (view.impact.id??[view.impact.x,view.impact.y].join(':'))) { this.impactKey=view.impact.id??[view.impact.x,view.impact.y].join(':'); impactFx = { x: view.impact.x, y: view.impact.y, t0: now }; }
       this.dirty = true;
     },
     draw(c, env) {
@@ -1173,7 +1173,8 @@ function mount(kind, root, send, context = {}) {
     shot = el('button', 'game-button primary arcade-fire', '↗ 发射'); shot.type = 'button'; panel.append(shot); listeners(shot, 'click', () => fire()); shell.append(panel);
   }
   const controls = el('div', 'touch-controls arcade-controls'), dpad = el('div', 'dpad arcade-dpad');
-  const emit = a => { if (!destroyed && latest?.status === 'playing') send(a); };
+  const paused=()=>!!context.isPaused?.()||document.hidden;
+  const emit = a => { if (!destroyed && latest?.status === 'playing' && !paused()) send(a); };
   const direction = dir => {
     if (kind === 'snake') emit({ type: 'direction', dir });
     else if (kind === 'bomber' || kind === 'maze') emit({ type: 'move', dir });
@@ -1182,7 +1183,7 @@ function mount(kind, root, send, context = {}) {
     if (kind === 'tanks') emit({ type: 'fire' });
     else if (kind === 'bomber') emit({ type: 'bomb' });
     else if (kind === 'slingshot') emit({ type: 'shoot', angle: Number(angle.value), power: Number(power.value) });
-    context.feedback?.('tap');
+
   }
   const move = () => {
     let dx = 0, dy = 0; for (const dir of pressed) { const d = DIRECTIONS[dir]; if (d) { dx += d[0]; dy += d[1]; } }
@@ -1228,18 +1229,19 @@ function mount(kind, root, send, context = {}) {
   const clear = () => { pressed.clear(); shell.querySelectorAll('.arcade-direction.active').forEach(b => b.classList.remove('active')); if (kind === 'tanks') move(); };
   listeners(window, 'keyup', e => { const dir = KEYS[e.code]; if (dir && pressed.has(dir)) { pressed.delete(dir); if (kind === 'tanks') move(); } });
   listeners(window, 'blur', clear); listeners(document, 'visibilitychange', () => { if (document.hidden) clear(); });
-  let lastFrame = 0;
+  let lastFrame = 0, presentationTime = 0;
   const paint = now => {
     if (destroyed) return;
     const dt = lastFrame ? Math.min(.05, (now - lastFrame) / 1000) : 0;
     lastFrame = now;
+    if(paused()){pressed.clear();shell.querySelectorAll('.arcade-direction.active').forEach(b=>b.classList.remove('active'));frame=requestAnimationFrame(paint);return;}presentationTime += dt*1000;
     if (!reduced) scene.clock += dt;
     if (latest && c) {
       if (pressed.size && now - lastMove > (kind === 'bomber' || kind === 'maze' ? 150 : 90)) { move(); lastMove = now; }
       if (!reduced || scene.dirty) {
         scene.dirty = false;
         c.clearRect(0, 0, config.width, config.height);
-        scene.draw(c, { now, clock: scene.clock, dt, snap: reduced, view: latest });
+        scene.draw(c, { now:presentationTime, clock: scene.clock, dt, snap: reduced, view: latest });
         if (latest.status === 'finished') {
           c.fillStyle = 'rgba(255,255,255,.58)'; c.fillRect(0, 0, config.width, config.height);
           const label = latest.winner === -1 ? '势均力敌 · 平局' : latest.winner === own ? '你赢下这一局！' : '这局惜败';
@@ -1265,7 +1267,7 @@ function mount(kind, root, send, context = {}) {
     update(view) {
       if (destroyed || !view || typeof view !== 'object') return;
       const old = latest; latest = view;
-      scene.update(view, performance.now());
+      scene.update(view, presentationTime);
       scoreNodes.forEach((n, i) => {
         const score = Number.isFinite(view.scores?.[i]) ? view.scores[i] : 0;
         let value = `${score} ${config.score}`;

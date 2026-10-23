@@ -33,23 +33,27 @@ function valid(s, player, action, now) {
 const DIRECTIONS = ['up', 'right', 'down', 'left'];
 function move2048(cells, direction) {
   const next = Array(16).fill(0);
-  let points = 0;
+  let points = 0; const slides = [], merged = [];
   for (let line = 0; line < 4; line++) {
     const indices = Array.from({ length: 4 }, (_, offset) => direction === 'left' ? line * 4 + offset : direction === 'right' ? line * 4 + 3 - offset : direction === 'up' ? offset * 4 + line : (3 - offset) * 4 + line);
-    const values = indices.map(i => cells[i]).filter(Boolean);
+    const occupied = indices.filter(i => cells[i]);
+    const values = occupied.map(i => cells[i]);
     let to = 0;
     for (let j = 0; j < values.length; j++) {
-      if (values[j] === values[j + 1]) { const value = values[j] * 2; next[indices[to++]] = value; points += value; j++; }
-      else next[indices[to++]] = values[j];
+      const target = indices[to++];
+      slides.push({from:occupied[j],to:target,value:values[j]});
+      if (values[j] === values[j + 1]) { const value = values[j] * 2; next[target] = value; points += value; merged.push(target);slides.push({from:occupied[j+1],to:target,value:values[j+1]}); j++; }
+      else next[target] = values[j];
     }
   }
-  return { cells: next, points, changed: next.some((v, i) => v !== cells[i]) };
+  return { cells: next, points, slides, merged, changed: next.some((v, i) => v !== cells[i]) };
 }
 function spawn2048(p) {
   const empty = p.cells.flatMap((value, i) => value === 0 ? [i] : []);
   if (!empty.length) return;
   const index = empty[Math.floor(random(p) * empty.length)];
   p.cells[index] = random(p) < 0.9 ? 2 : 4;
+  return {index,value:p.cells[index]};
 }
 function can2048(cells) {
   return cells.some((v, i) => !v || i % 4 < 3 && v === cells[i + 1] || i + 4 < 16 && v === cells[i + 4]);
@@ -64,7 +68,9 @@ const g2048 = {
     this.tick(s, 0, now); if (s.status !== 'playing' || s.players[player].stuck) return false;
     const p = s.players[player], result = move2048(p.cells, a.direction);
     if (!result.changed) return false;
-    p.cells = result.cells; p.moves++; s.scores[player] += result.points; spawn2048(p); p.stuck = !can2048(p.cells);
+    p.cells = result.cells; p.moves++; s.scores[player] += result.points;
+    p.motion={number:p.moves,direction:a.direction,slides:result.slides,merged:result.merged,spawn:spawn2048(p)};
+    p.stuck = !can2048(p.cells);
     if (s.players.every(p => p.stuck)) finish(s, '双方棋盘均已无路可走，按分数结算。');
     return true;
   },
@@ -73,7 +79,7 @@ const g2048 = {
     for (const p of s.players) p.stuck = !can2048(p.cells);
     if (now >= s.endsAt || s.players.every(p => p.stuck)) finish(s, now >= s.endsAt ? '时间到，按合并分数结算。' : '双方棋盘均已满，按分数结算。');
   },
-  view(s) { return { ...common(s), players: s.players.map(p => ({ cells: [...p.cells], moves: p.moves, stuck: p.stuck, highest: Math.max(...p.cells) })) }; }
+  view(s) { return { ...common(s), players: s.players.map(p => ({ cells: [...p.cells], moves: p.moves, stuck: p.stuck, highest: Math.max(...p.cells),motion:p.motion?clone(p.motion):null })) }; }
 };
 
 const SUDOKU_PUZZLE = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
@@ -291,6 +297,7 @@ function lockPiece(s, player, now) {
   for (const [x, y] of cells) p.board[y * 10 + x] = PIECES.indexOf(p.active.kind) + 1;
   const rows = Array.from({ length: 20 }, (_, y) => p.board.slice(y * 10, y * 10 + 10));
   const kept = rows.filter(row => row.some(n => !n)), cleared = 20 - kept.length;
+  const clearedRows=rows.flatMap((row,y)=>row.every(Boolean)?[y]:[]);
   p.board = [...Array(cleared * 10).fill(0), ...kept.flat()];
   p.lines += cleared; s.scores[player] += [0, 100, 300, 500, 800][cleared] || 0;
   let attack = [0, 0, 1, 2, 4][cleared] || 0;
@@ -303,7 +310,9 @@ function lockPiece(s, player, now) {
     const hole = Math.floor(random(p, '_garbageRng') * 10);
     p.board.push(...Array.from({ length: 10 }, (_, x) => x === hole ? 0 : 8));
   }
-  p.pieces++; spawnPiece(p, now);
+  p.pieces++;
+  p.lockEvent={number:p.pieces,cells:cells.map(c=>[...c]),kind:p.active.kind,clearedRows,attack,cancel,garbage};
+  spawnPiece(p, now);
 }
 const tetris = {
   create(seed, now) {
@@ -355,7 +364,7 @@ const tetris = {
   view(s) {
     return { ...common(s), width: 10, height: 20, players: s.players.map(p => {
       const ghost = { ...p.active }; while (p.alive && fits(p, { ...ghost, y: ghost.y + 1 })) ghost.y++;
-      return { board: [...p.board], active: { ...p.active }, activeCells: pieceCells(p.active), ghostCells: pieceCells(ghost), next: p.queue.slice(0, 3), lines: p.lines, pending: p.pending, alive: p.alive };
+      return { board: [...p.board], active: { ...p.active }, activeCells: pieceCells(p.active), ghostCells: pieceCells(ghost), next: p.queue.slice(0, 3), lines: p.lines, pending: p.pending, alive: p.alive, pieces:p.pieces, lockEvent:p.lockEvent?clone(p.lockEvent):null };
     }) };
   }
 };

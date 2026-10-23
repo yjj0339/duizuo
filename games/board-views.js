@@ -97,7 +97,7 @@ function ui(root, send, context, id, rules, scoreLabel) {
       const b = element('button', `game-button ${primary ? 'primary' : 'secondary'} board-control`, label); b.type = 'button';
       api.listen(b, 'click', () => { if (b.getAttribute('aria-disabled') !== 'true') action(); }); return b;
     },
-    send(action) { if (!api.view || api.view.status !== 'playing') return; send(action); context.feedback?.('tap'); },
+    send(action) { if (!api.view || api.view.status !== 'playing') return; send(action); },
     update(view) {
       api.view = view;
       values.forEach((node, i) => write(node, view.scores?.[i] ?? 0)); write(status, view.message || '等待对局同步…');

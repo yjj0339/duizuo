@@ -222,7 +222,7 @@ function resolveRps(s, now, timeout = false) {
 const rps = {
   create(seed, now) { return { ...base(seed, now, '双方暗选，齐选后揭晓。先得 3 分获胜。'), choices: [null, null], phase: 'choose', round: 1, reveal: null, roundWinner: null, revealUntil: 0, endsAt: now + 20000 }; },
   action(s, p, a, now) {
-    if (!valid(s, p, a, now) || !within(s, now) || a.type !== 'choose' || s.phase !== 'choose' || s.choices[p] !== null || !CHOICES.includes(a.choice)) return false;
+    if (!valid(s, p, a, now) || !within(s, now) || a.type !== 'choose' || a.round !== undefined && a.round !== s.round || s.phase !== 'choose' || s.choices[p] !== null || !CHOICES.includes(a.choice)) return false;
     s.choices[p] = a.choice;
     if (s.choices.every(Boolean)) resolveRps(s, now); else s.message = '一位玩家已锁定，等待另一位出拳。';
     return true;

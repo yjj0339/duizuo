@@ -77,7 +77,7 @@ function tankCanMove(s, p, x, y) {
 }
 const tanks = {
   create(seed, now) {
-    return { ...base('tanks', seed, now, 150), width: 720, height: 480, tanks: [0, 1].map(i => ({ x: i ? 650 : 70, y: 240, angle: i ? Math.PI : 0, hp: 5, dx: 0, dy: 0, lastControl: now - 1000, nextShot: now })), obstacles: tankObstacles(), bullets: [], message: '方向键移动，点击战场瞄准，空格开火；每人 5 点装甲' };
+    return { ...base('tanks', seed, now, 150), width: 720, height: 480, tanks: [0, 1].map(i => ({ x: i ? 650 : 70, y: 240, angle: i ? Math.PI : 0, hp: 5, shots: 0, dx: 0, dy: 0, lastControl: now - 1000, nextShot: now })), obstacles: tankObstacles(), bullets: [], message: '方向键移动，点击战场瞄准，空格开火；每人 5 点装甲' };
   },
   action(s, p, a, now) {
     if (!accepts(s, p, a, now)) return false;
@@ -92,7 +92,7 @@ const tanks = {
     }
     if (a.type === 'fire' && now >= t.nextShot && s.bullets.filter(b => b.owner === p).length < 6) {
       const vx = Math.cos(t.angle), vy = Math.sin(t.angle);
-      s.bullets.push({ x: t.x + vx * 25, y: t.y + vy * 25, vx: vx * 350, vy: vy * 350, owner: p, life: 2.6 }); t.nextShot = now + 450; return true;
+      s.bullets.push({ x: t.x + vx * 25, y: t.y + vy * 25, vx: vx * 350, vy: vy * 350, owner: p, life: 2.6 }); t.nextShot = now + 450; t.shots=(t.shots||0)+1; return true;
     }
     return false;
   },
@@ -228,7 +228,7 @@ function slingImpact(s, x, y, direct, now) {
   const d = Math.hypot(x - target.x, y - (terrain(target.x) - 28));
   const damage = direct ? 55 : d < 100 ? Math.max(8, Math.round(55 * (1 - d / 100))) : 0;
   target.hp = Math.max(0, target.hp - damage); s.scores[owner] += damage;
-  s.impact = { x, y, until: now + 850 }; s.projectile = null;
+  s.impact = { x, y, until: now + 850, id:(s.impact?.id||0)+1 }; s.projectile = null;
   if (target.hp <= 0) { finish(s, owner); return; }
   s.turn = 1 - owner; s.turnEndsAt = now + 20000; s.wind = Math.round((random(s) * 2 - 1) * 25);
   s.message = damage ? `命中！造成 ${damage} 点伤害，交换回合` : '没有命中，交换回合';

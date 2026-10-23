@@ -1,0 +1,19 @@
+.experience-game{position:relative;isolation:isolate}
+.match-guide{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px 16px;margin:16px auto 0;padding:13px 17px;width:min(100%,900px);box-sizing:border-box;border:1px solid #dbe8e5;border-radius:18px;background:linear-gradient(115deg,#f0f8f4e8,#ffffffd9);color:#36524d;font-size:12px;line-height:1.65;text-align:left}
+.match-guide-goal{font-size:13px;font-weight:750;letter-spacing:.02em}
+.match-guide-state{min-width:0;color:#42675d}
+.match-guide[data-waiting=true]{background:#f4f6f9de;border-color:#e0e7ee}
+.match-guide[data-waiting=true] .match-guide-state{color:#697b8e}
+.match-cue{grid-column:1/-1;border-top:1px solid #dae5e080;padding-top:5px;font-size:11px;color:#67837a;min-height:18px}
+.match-cue[data-kind=error],.match-cue[data-kind=notice]{color:#a25c4c}
+.match-cue[data-kind=finish]{color:#207f67;font-weight:750}
+.match-ghost{position:absolute!important;z-index:10;pointer-events:none!important;margin:0!important;box-sizing:border-box}
+.motion-paused *, .motion-paused *::before,.motion-paused *::after{animation-play-state:paused!important}
+.puzzle-2048-grid,.puzzle-tetris-grid{position:relative;isolation:isolate}
+.puzzle-motion-tile{position:absolute;z-index:6;pointer-events:none;display:grid;place-items:center;box-sizing:border-box;margin:0;will-change:transform,opacity}
+.puzzle-line-sweep{position:absolute;left:0;width:100%;height:5%;pointer-events:none;z-index:8;background:linear-gradient(90deg,#fff4ce,#ffffff,#b4eee0);box-shadow:0 0 18px #fff6cc;border-radius:3px}
+.puzzle-meter-fill{position:relative;transition:width .22s cubic-bezier(.2,.8,.3,1)}
+.puzzle-meter-fill::after{content:'';position:absolute;right:-4px;top:50%;width:9px;height:9px;border:2px solid #fff;background:currentColor;border-radius:50%;transform:translateY(-50%);box-shadow:0 1px 5px #33564d33}
+@media(max-width:600px){.match-guide{grid-template-columns:1fr;gap:3px;margin-top:10px;padding:10px 13px;border-radius:14px}.match-guide-goal{font-size:12px}.match-guide-state{font-size:11px}.match-cue{font-size:10px}}
+@media(orientation:landscape) and (max-height:560px){.focus-play .match-guide{display:none}}
+@media(prefers-reduced-motion:reduce){.puzzle-meter-fill{transition:none}.puzzle-motion-tile,.puzzle-line-sweep{display:none}}
