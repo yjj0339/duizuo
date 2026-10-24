@@ -301,6 +301,9 @@ function lockPiece(s, player, now) {
   p.board = [...Array(cleared * 10).fill(0), ...kept.flat()];
   p.lines += cleared; s.scores[player] += [0, 100, 300, 500, 800][cleared] || 0;
   let attack = [0, 0, 1, 2, 4][cleared] || 0;
+  p.combo=cleared?(p.combo??-1)+1:-1;
+  if(cleared){s.scores[player]+=Math.max(0,p.combo)*50;attack+=Math.min(4,Math.floor(Math.max(0,p.combo)/2));}
+  p.holdUsed=false;
   const cancel = Math.min(p.pending, attack); p.pending -= cancel; attack -= cancel;
   s.players[1 - player].pending += attack;
   const garbage = Math.min(p.pending, 20); p.pending -= garbage;
@@ -311,7 +314,7 @@ function lockPiece(s, player, now) {
     p.board.push(...Array.from({ length: 10 }, (_, x) => x === hole ? 0 : 8));
   }
   p.pieces++;
-  p.lockEvent={number:p.pieces,cells:cells.map(c=>[...c]),kind:p.active.kind,clearedRows,attack,cancel,garbage};
+  p.lockEvent={number:p.pieces,cells:cells.map(c=>[...c]),kind:p.active.kind,clearedRows,attack,cancel,garbage,combo:p.combo};
   spawnPiece(p, now);
 }
 const tetris = {
@@ -324,10 +327,17 @@ const tetris = {
   },
   action(s, player, a, now) {
     if (!valid(s, player, a, now)) return false;
-    if (!(a.type === 'drop' || a.type === 'move' && ['left', 'right', 'down'].includes(a.direction) || a.type === 'rotate' && (a.direction === 1 || a.direction === -1))) return false;
+    if (!(a.type === 'hold' || a.type === 'drop' || a.type === 'move' && ['left', 'right', 'down'].includes(a.direction) || a.type === 'rotate' && (a.direction === 1 || a.direction === -1))) return false;
     this.tick(s, 0, now); if (s.status !== 'playing') return false;
     const p = s.players[player];
     if (!p.alive) return false;
+    if(a.type==='hold'){
+      if(p.holdUsed)return false;
+      const previous=p.hold;p.hold=p.active.kind;
+      if(previous){p.active={kind:previous,rotation:0,x:3,y:0};p._lastFall=now;if(!fits(p,p.active))p.alive=false;}
+      else spawnPiece(p,now);
+      p.holdUsed=true;settleTetris(s);return true;
+    }
     if (a.type === 'drop') {
       while (fits(p, { ...p.active, y: p.active.y + 1 })) { p.active.y++; s.scores[player] += 2; }
       lockPiece(s, player, now); settleTetris(s); return true;
@@ -364,7 +374,7 @@ const tetris = {
   view(s) {
     return { ...common(s), width: 10, height: 20, players: s.players.map(p => {
       const ghost = { ...p.active }; while (p.alive && fits(p, { ...ghost, y: ghost.y + 1 })) ghost.y++;
-      return { board: [...p.board], active: { ...p.active }, activeCells: pieceCells(p.active), ghostCells: pieceCells(ghost), next: p.queue.slice(0, 3), lines: p.lines, pending: p.pending, alive: p.alive, pieces:p.pieces, lockEvent:p.lockEvent?clone(p.lockEvent):null };
+      return { board: [...p.board], active: { ...p.active }, activeCells: pieceCells(p.active), ghostCells: pieceCells(ghost), next: p.queue.slice(0, 3), lines: p.lines, pending: p.pending, alive: p.alive, pieces:p.pieces, hold:p.hold||null,holdUsed:!!p.holdUsed,combo:p.combo??-1,lockEvent:p.lockEvent?clone(p.lockEvent):null };
     }) };
   }
 };

@@ -105,7 +105,7 @@ export class Rooms {
     const s=this.connections.get(id);if(!s)return null;const {room,slot}=s;
     const now=this.clock(),shift=(room.timeShift||0)+(room.pausedAt!=null?now-room.pausedAt:0);
     const game=room.game?this.engines[room.gameId].view(room.game,slot):null;
-    const translate=o=>{if(!o||typeof o!=='object')return;for(const [k,v]of Object.entries(o)){if(typeof v==='number'&&v>0&&(/At$|Until$/.test(k)||k==='now'||k==='until'))o[k]=v+shift;else if(v&&typeof v==='object')translate(v);}};translate(game);
+    const translate=o=>{if(!o||typeof o!=='object')return;for(const [k,v]of Object.entries(o)){if(typeof v==='number'&&v>0&&(/At$|Until$/.test(k)||k==='now'||k==='until'||k==='jump'))o[k]=v+shift;else if(v&&typeof v==='object')translate(v);}};translate(game);
     return {player:slot,serverNow:now,room:{code:room.code,gameId:room.gameId,phase:room.phase,matchId:room.matchId,paused:room.phase==='playing'&&room.pausedAt!=null,resumeAt:room.resumeAt||null,graceMs:this.graceMs,players:room.players.map(p=>p?{name:p.name,connected:p.connected,active:p.active!==false,ready:p.ready,protectedUntil:p.awaySince!=null?p.awaySince+this.graceMs:null}:null),series:structuredClone(room.series),history:structuredClone(room.history),reaction:room.reaction?{...room.reaction}:null,startedAt:room.startedAt?room.startedAt+shift:null},game};
   }
   disconnect(id){const s=this.connections.get(id);if(!s)return;const now=this.clock();this.connections.delete(id);s.participant.connected=false;s.participant.active=false;s.participant.conn=null;s.participant.disconnectedAt=now;s.participant.awaySince??=now;s.room.touchedAt=now;this.presence(s.room,now);}

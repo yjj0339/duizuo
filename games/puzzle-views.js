@@ -365,6 +365,7 @@ function renderTetris(root, send, context) {
   ui.content.append(race);
   const controls = [['←', { type: 'move', direction: 'left' }, '向左'], ['↺', { type: 'rotate', direction: -1 }, '逆时针旋转'], ['↓', { type: 'move', direction: 'down' }, '向下'], ['↻', { type: 'rotate', direction: 1 }, '顺时针旋转'], ['→', { type: 'move', direction: 'right' }, '向右'], ['⤓ 瞬降', { type: 'drop' }, '瞬间落地']];
   const pad = ui.el('div', 'puzzle-tetris-controls');
+  const holdButton=ui.button('暂存 C',{type:'hold'},'puzzle-hold');pad.append(holdButton);
   for (const [text, action, label] of controls) { const b = ui.button(text, action, action.type === 'drop' ? 'puzzle-drop' : ''); b.setAttribute('aria-label', label); pad.append(b); }
   ui.controls.append(pad);
   ui.listen(grids[ui.player], 'pointerdown', () => root.focus({ preventScroll: true }));
@@ -372,6 +373,7 @@ function renderTetris(root, send, context) {
     if (['ArrowLeft', 'ArrowRight', 'ArrowDown'].includes(key)) { ui.command({ type: 'move', direction: directionKeys[key] }); return true; }
     if (['ArrowUp', 'x', 'X', 'z', 'Z'].includes(key)) { ui.command({ type: 'rotate', direction: ['z', 'Z'].includes(key) ? -1 : 1 }); return true; }
     if (key === ' ') { ui.command({ type: 'drop' }); return true; }
+    if (key === 'c'||key==='C') {ui.command({type:'hold'});return true;}
     return false;
   });
   return {
@@ -397,7 +399,8 @@ function renderTetris(root, send, context) {
           node.dataset.garbage = String(cell.value === 8);
           if (cleared.has(row) && cell.value) { node.style.setProperty('--pz-col', String(col)); ui.flash(node, 'clearing', 820); }
         });
-        labels[i].textContent = `${p.lines} 行 · 待接收 ${p.pending} 行${p.alive ? '' : ' · 已封顶'}`;
+        labels[i].textContent = `${p.lines} 行 · 待接收 ${p.pending} 行 · 暂存 ${p.hold||'空'}${p.combo>0?' · '+p.combo+' 连击':''}${p.alive ? '' : ' · 已封顶'}`;
+        if(i===ui.player){holdButton.disabled=p.holdUsed||!p.alive;holdButton.textContent='暂存 '+(p.hold||'C');}
         chips[i].forEach((chip, k) => { const kind = p.next[k]; chip.textContent = kind || ''; chip.dataset.fill = kind ? String(kinds.indexOf(kind) + 1) : '0'; });
         grids[i].setAttribute('aria-label', `${i === ui.player ? '你的' : '对方'}棋盘，已消 ${p.lines} 行，待接收 ${p.pending} 障碍行，当前 ${p.active.kind} 方块。`);
       });

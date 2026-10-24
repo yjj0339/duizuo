@@ -15,7 +15,7 @@ export function grain(c,x,y,w,h,color,step=4){c.save();c.beginPath();c.rect(x,y,
 export function racket(c,x,y,angle,color,small=false){c.save();c.translate(x,y);c.rotate(angle);line(c,0,0,0,-35,'#354e59',5);line(c,0,2,0,-12,color,7);for(let i=0;i<4;i++)line(c,-3,-i*3,3,-i*3,'#ffffff80',1);c.translate(0,-53);c.beginPath();c.ellipse(0,0,small?15:17,small?19:23,0,0,Math.PI*2);c.fillStyle=small?color:'#f5fcffb0';c.fill();c.save();c.clip();if(!small){for(let i=-24;i<25;i+=5){line(c,i,-24,i,24,'#758d9a88',.7);line(c,-20,i,20,i,'#758d9a88',.7);}}else{ellipse(c,-5,-7,5,7,'#ffffff24');}c.restore();c.beginPath();c.ellipse(0,0,small?15:17,small?19:23,0,0,Math.PI*2);c.strokeStyle='#eaf8ff';c.lineWidth=4;c.stroke();c.strokeStyle=color;c.lineWidth=2;c.stroke();c.restore();}
 
 // Each limb has separate shoulder/elbow/knee joints; gait is driven by actual displacement.
-export function athlete(c,x,y,{color=palette[0],side=1,run=0,phase=0,jump=0,swing=0,style='clear',own=false,t=0,keeper=false,dive=0}={}){
+export function athlete(c,x,y,{color=palette[0],side=1,run=0,phase=0,jump=0,swing=0,style='clear',own=false,t=0,keeper=false,dive=0,contactPoint=null}={}){
  shadow(c,x,y+5,26-jump*.07,6-jump*.008,.14);
  c.save();c.translate(x,y-jump);c.scale(side,1);c.rotate(dive);
  const gait=Math.sin(phase)*run,bob=Math.abs(Math.sin(phase))*run*2+(run<.1?Math.sin(t*.002)*1.2:0),hip=-34-bob;
@@ -29,10 +29,10 @@ export function athlete(c,x,y,{color=palette[0],side=1,run=0,phase=0,jump=0,swin
  c.save();c.scale(side,1);text(c,side===1?'01':'02',1,shoulder+24,11,'#fff',800);c.restore();
  const sp=clamp(swing,0,1),wind=sp<.28?sp/.28:1-(sp-.28)/.72;
  const armAngle=keeper?-.5:(style==='drop'?-.3:style==='smash'?-2.1:-1.7)*wind;
- const handX=27+Math.sin(armAngle)*15,handY=shoulder+14+Math.cos(armAngle)*8-wind*32;
+ const handX=contactPoint?(contactPoint.x-x)*side-14:27+Math.sin(armAngle)*15,handY=contactPoint?contactPoint.y-y+jump+51:shoulder+14+Math.cos(armAngle)*8-wind*32;
  line(c,-12,shoulder+8,-24-gait*6,shoulder+28,'#efba95',8);line(c,-24-gait*6,shoulder+28,-16-gait*9,shoulder+37,'#efba95',7);
  line(c,13,shoulder+9,24,shoulder+18-wind*13,'#efba95',9);line(c,24,shoulder+18-wind*13,handX,handY,'#f6c6a1',7);circle(c,handX,handY,4.8,'#f6c6a1');
- if(!keeper){racket(c,handX,handY,.45-wind*2.3+(sp>.28?(sp-.28)*3:0),color);if(sp>.24&&sp<.75){c.save();c.globalAlpha=(1-sp)*.35;c.strokeStyle='#ffffff';c.lineWidth=7;c.beginPath();c.arc(18,shoulder+10,48,-2.7,1);c.stroke();c.restore();}}
+ if(!keeper){racket(c,handX,handY,contactPoint ? .27 : .45-wind*2.3+(sp>.28?(sp-.28)*3:0),color);if(sp>.24&&sp<.75){c.save();c.globalAlpha=(1-sp)*.35;c.strokeStyle='#ffffff';c.lineWidth=7;c.beginPath();c.arc(18,shoulder+10,48,-2.7,1);c.stroke();c.restore();}}
  else{circle(c,handX,handY,8,'#f4f9ff',color);circle(c,-16-gait*9,shoulder+37,8,'#f4f9ff',color);}
  round(c,-5,shoulder-9,11,12,3,'#e7b18a');
  const hy=shoulder-21;circle(c,0,hy,15,radial(c,0,hy,18,['#ffdfbc','#efba95','#d39a7c']));

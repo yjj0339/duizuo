@@ -1,7 +1,7 @@
 import {chromium} from 'file:///D:/codexAI/.runtime/browser-tools/node_modules/pwcore/index.mjs';
 import {mkdir,writeFile} from 'node:fs/promises';import assert from 'node:assert/strict';
 import {catalog} from '../shared/catalog.js';import {createApp} from '../server/index.js';
-const dir='D:/codexAI/duizuo/artifacts/navigation-v6';await mkdir(dir,{recursive:true});
+const dir=process.env.ARTIFACT_DIR||'D:/codexAI/duizuo/artifacts/navigation-v6';await mkdir(dir,{recursive:true});
 const app=await createApp({persist:false,countdownMs:80}),address=await app.listen(0),base=process.env.TEST_URL||'http://127.0.0.1:'+address.port;
 const browser=await chromium.launch({headless:true,executablePath:'D:/codexAI/.runtime/browsers/chromium-1234/chrome-win64/chrome.exe',...(process.env.TEST_PROXY?{proxy:{server:process.env.TEST_PROXY}}:{args:['--no-proxy-server']})});
 const checks=[],errors=[];let lastPage;
@@ -34,7 +34,7 @@ try{
   await p.setViewportSize(viewport);await p.locator('#game-menu').click();assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));const menu=await p.locator('#dialog').boundingBox();assert.ok(menu.x>=0&&menu.x+menu.width<=viewport.width+1&&menu.y>=0);await p.locator('#menu-focus').click();await p.locator('#game-menu').click();await p.locator('#menu-lobby').click();await lobby(p);await open(p,'connect4');pass(viewport.width+'x'+viewport.height+' menu / focus / return layout');
  }
  await p.locator('#back').click();await lobby(p);await p.locator('button[data-game="connect4"]').click();await p.locator('#mode-start').click();await p.locator('#confirm-cancel').click();await p.locator('#mode-continue').click();await play(p,'connect4');assert.deepEqual(await p.evaluate(()=>__DUIZUO__.getLocal().view.board),board);pass('mode picker overwrite confirmation keeps original save on cancel');
- await p.route('**/version.json?*',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({version:'3.2.0',id:'navigation-test-next'})}));
+ await p.route('**/version.json?*',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({version:'3.99.0',id:'navigation-test-next'})}));
  await p.locator('#game-menu').click();await p.locator('#menu-version').click();await p.locator('#check-update').click();await p.locator('#apply-update').waitFor();assert.equal(await p.evaluate(()=>__DUIZUO__.getLocal().paused),true);await p.locator('#apply-update').click();await p.waitForURL('**v=navigation-test-next');await open(p,'connect4');assert.deepEqual(await p.evaluate(()=>__DUIZUO__.getLocal().view.board),board);pass('update discovery is opt-in and saves solo before reload');
  await ctx.close();
  // Independent identities, Socket.IO on one side and HTTPS long polling on the other.

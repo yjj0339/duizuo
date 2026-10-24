@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {engines} from '../shared/engines.js';
+test('tetris holds once per piece, restores permission after a lock and preserves bag order',()=>{
+ const e=engines.tetris,s=e.create(7,1000),p=s.players[0],first=p.active.kind,next=p.queue[0];
+ assert.equal(e.action(s,0,{type:'hold'},1001),true);assert.equal(p.hold,first);assert.equal(p.active.kind,next);assert.equal(e.action(s,0,{type:'hold'},1002),false);
+ e.action(s,0,{type:'drop'},1003);const third=p.active.kind;e.action(s,0,{type:'hold'},1004);assert.equal(p.active.kind,first);assert.equal(p.hold,third);assert.equal(p.active.rotation,0);
+});
+test('tetris consecutive clears produce a combo, which resets on a no-clear lock',()=>{const e=engines.tetris,s=e.create(2,1000),p=s.players[0];function row(t){p.board=Array(200).fill(0);p.board.splice(190,10,...[1,1,1,0,0,0,0,1,1,1]);p.active={kind:'I',rotation:0,x:3,y:0};e.action(s,0,{type:'drop'},t);}row(1001);row(1002);row(1003);assert.equal(p.combo,2);assert.ok(s.players[1].pending>=1);assert.equal(e.view(s,0).players[0].combo,2);e.action(s,0,{type:'drop'},1004);assert.equal(p.combo,-1);});
+test('pool draw and follow have distinct post-contact white-ball trajectories and reject nonfinite spin',()=>{const ends=[];for(const spin of [-1,1]){const e=engines.billiards,s=e.create(3,1000);for(const b of s.balls)b.potted=b.n!==0&&b.n!==1;Object.assign(s.balls.find(b=>b.n===1),{x:330,y:200});assert.equal(e.action(s,0,{type:'shoot',angle:0,power:.35,spin:NaN},1000),false);assert.equal(e.action(s,0,{type:'shoot',angle:0,power:.35,spin},1000),true);for(let i=1;i<=90;i++)e.tick(s,1/120,1000+i*1000/120);ends.push(s.balls[0].x);}assert.ok(ends[1]-ends[0]>35);});

@@ -1,6 +1,6 @@
 import {engines} from '../shared/engines.js';
 import {chooseMove} from './legacy/mint/ai.js';
-export function shiftView(value,shift){const v=structuredClone(value);function walk(o){if(!o||typeof o!=='object')return;for(const[k,n]of Object.entries(o))if(typeof n==='number'&&n>0&&(/At$|Until$/.test(k)||k==='now'||k==='until'))o[k]=n+shift;else if(n&&typeof n==='object')walk(n);}walk(v);return v;}
+export function shiftView(value,shift){const v=structuredClone(value);function walk(o){if(!o||typeof o!=='object')return;for(const[k,n]of Object.entries(o))if(typeof n==='number'&&n>0&&(/At$|Until$/.test(k)||k==='now'||k==='until'||k==='jump'))o[k]=n+shift;else if(n&&typeof n==='object')walk(n);}walk(v);return v;}
 const saveKey='duo:solo-v2';
 const savesKey='duo:solo-games-v3';
 const validSave=s=>s?.version===2&&Object.hasOwn(engines,s.id)&&s.state?.status==='playing';
