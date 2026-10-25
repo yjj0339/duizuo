@@ -18,7 +18,7 @@ export function stage(root,send,context,{id,title,hint,width=720,height=460,worl
  const puff=(x,y,color='#fff',count=8)=>{if(context.reducedMotion)return;for(let i=0;i<count;i++){const a=i*2.3999;particles.push({x,y,vx:Math.cos(a)*(25+i*5),vy:Math.sin(a)*(25+i*5),life:0,duration:380+i*19,color});}if(particles.length>80)particles.splice(0,particles.length-80);};
  on(root,'keydown',e=>{if(e.target.closest('input,select,textarea')||e.altKey||e.ctrlKey||e.metaKey)return;if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){keys.add(e.key);if(directions)e.preventDefault();}});
  on(window,'keyup',e=>keys.delete(e.key));on(window,'blur',()=>keys.clear());on(doc,'visibilitychange',()=>keys.clear());
- function tick(now){if(dead)return;frame=requestAnimationFrame(tick);const dt=Math.min(50,now-last);last=now;if(!view||paused()){keys.clear();suspend();return;}time+=dt;
+ function tick(now){if(dead)return;frame=requestAnimationFrame(tick);const dt=Math.min(50,now-last);last=now;if(!view||paused()){suspend();keys.clear();return;}time+=dt;
   if(directions&&now-controlAt>65&&keys.size&&view.status==='playing'){directions(keys);controlAt=now;}
   if(webgl){draw(sampleMotion(view,previous,clamp((now-received)/gap,0,1)),time,dt/1000);return;}
   ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(backdrop,0,0);ctx.setTransform(2,0,0,2,0,0);ctx.save();transformed(ctx);
@@ -30,7 +30,7 @@ export function stage(root,send,context,{id,title,hint,width=720,height=460,worl
   mapPointer(fn){pointerMap=fn;},dispose(fn){clean.push(fn);},
   sound:kind=>context.feedback?.(kind),
   setBackdrop(fn){const c=backdrop.getContext('2d');c.setTransform(2,0,0,2,0,0);c.fillStyle=gradient(c,0,0,0,height,['#eef4f7','#e4eced']);c.fillRect(0,0,width,height);c.save();transformed(c);fn(c);c.restore();},
-  animate(fn){draw=fn;},events(fn){events=fn;},moveKeys(fn){directions=fn;},whenPaused(fn){suspend=fn;},isPaused:paused,
+  animate(fn){draw=fn;},events(fn){events=fn;},moveKeys(fn){directions=fn;},whenPaused(fn){const previous=suspend;suspend=()=>{previous();fn();};},isPaused:paused,
   hint(value,urgent=false){if(time<noticeUntil&&!urgent)return;if(notice.textContent!==value)notice.textContent=value;notice.classList.toggle('is-ready',urgent);},
   message(value){notice.textContent=value;noticeUntil=time+1200;notice.classList.remove('is-ready');},
   state(value){if(state.textContent!==value)state.textContent=value;},

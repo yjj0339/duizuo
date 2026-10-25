@@ -15,5 +15,5 @@ export function mountLab(root,id,context){
   const sig=JSON.stringify(r);if(sig===signature&&!force)return;signature=sig;metrics.replaceChildren();for(const m of r.metrics){const item=el('div'),name=el('span','',m.label),value=el('strong','',m.value);item.append(name,value);metrics.append(item);}insight.textContent=r.insight;label.textContent='训练目标：'+r.goal+(state.achieved?' · 已达成':'');bar.max=Math.max(1,r.target);bar.value=Math.min(r.target,Math.max(0,r.progress));bar.setAttribute('aria-label',r.goal);paintMarks(r.marks);
  }
  const toggle=()=>{state.open=box.open;refresh(true);};box.addEventListener('toggle',toggle);
- return {update(v){view=v;refresh();},destroy(){for(const n of marked)n.classList.remove('lab-mark');box.removeEventListener('toggle',toggle);box.removeEventListener('keydown',stop);box.removeEventListener('keyup',stop);markButton?.removeEventListener('click',toggleMarks);box.remove();}};
+ return {element:box,update(v){view=v;refresh();},destroy(){for(const n of marked)n.classList.remove('lab-mark');box.removeEventListener('toggle',toggle);box.removeEventListener('keydown',stop);box.removeEventListener('keyup',stop);markButton?.removeEventListener('click',toggleMarks);box.remove();}};
 }

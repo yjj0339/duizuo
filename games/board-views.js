@@ -132,13 +132,14 @@ function grid(api, count, cols, name, onSelect, onActivate, cellBuilder) {
     api.listen(b, 'click', () => { select(i); onActivate?.(i); });
     api.listen(b, 'focus', () => { if (selected !== i) select(i); });
     api.listen(b, 'keydown', e => {
+      const columns=getComputedStyle(node).gridTemplateColumns.split(' ').length||cols;
       let next = selected;
-      if (e.key === 'ArrowLeft') next = Math.max(Math.floor(selected / cols) * cols, selected - 1);
-      else if (e.key === 'ArrowRight') next = Math.min(Math.floor(selected / cols) * cols + cols - 1, selected + 1, count - 1);
-      else if (e.key === 'ArrowUp') next = Math.max(0, selected - cols);
-      else if (e.key === 'ArrowDown') next = Math.min(count - 1, selected + cols);
-      else if (e.key === 'Home') next = e.ctrlKey ? 0 : Math.floor(selected / cols) * cols;
-      else if (e.key === 'End') next = e.ctrlKey ? count - 1 : Math.min(count - 1, Math.floor(selected / cols) * cols + cols - 1);
+      if (e.key === 'ArrowLeft') next = Math.max(Math.floor(selected / columns) * columns, selected - 1);
+      else if (e.key === 'ArrowRight') next = Math.min(Math.floor(selected / columns) * columns + columns - 1, selected + 1, count - 1);
+      else if (e.key === 'ArrowUp') next = Math.max(0, selected - columns);
+      else if (e.key === 'ArrowDown') next = Math.min(count - 1, selected + columns);
+      else if (e.key === 'Home') next = e.ctrlKey ? 0 : Math.floor(selected / columns) * columns;
+      else if (e.key === 'End') next = e.ctrlKey ? count - 1 : Math.min(count - 1, Math.floor(selected / columns) * columns + columns - 1);
       else return;
       e.preventDefault(); select(next, true);
     });
@@ -221,6 +222,7 @@ function mountFleet(root, send, context) {
   function refresh() {
     const v = a.view; if (!v) return;
     const setup = v.status === 'playing' && v.phase === 'setup', editable = setup && !v.ready[a.p];
+    layout.dataset.phase=v.phase;
     shipBar.hidden = !setup; setupToolbar.hidden = !setup; place.node.hidden = !setup; target.hidden = v.phase === 'setup';
     write(ownTitle, setup ? '我方海域 · 调整舰船位置' : '我方海域 · 防守情况');
     shipButtons.forEach((b, i) => { b.classList.toggle('active', i === chosenShip); b.setAttribute('aria-pressed', String(i === chosenShip)); locked(b, !editable); });

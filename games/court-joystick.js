@@ -1,0 +1,11 @@
+// One thumb surface; keyboard arrows share the same movement path.
+export function courtJoystick(ui,axis,move){
+ const horizontal=axis==='x',negative=horizontal?'ArrowLeft':'ArrowUp',positive=horizontal?'ArrowRight':'ArrowDown';
+ const pad=ui.el('div','court-joystick '+(horizontal?'horizontal':'vertical')),track=ui.el('span','joystick-track'),knob=ui.el('span','joystick-knob'),caption=ui.el('small','','移动');
+ pad.tabIndex=0;pad.setAttribute('role','slider');pad.setAttribute('aria-label',horizontal?'左右移动摇杆':'上下移动摇杆');pad.setAttribute('aria-orientation',horizontal?'horizontal':'vertical');pad.setAttribute('aria-valuemin','-1');pad.setAttribute('aria-valuemax','1');pad.setAttribute('aria-valuenow','0');pad.append(track,knob,caption);ui.tools.append(pad);let pointer=null,pendingStop=false;
+ const flush=()=>{if(!pendingStop||ui.isPaused()||!ui.view)return;pendingStop=false;ui.command({type:'stop'});};
+ const clear=()=>{if(pointer!==null||ui.keys.has(negative)||ui.keys.has(positive))pendingStop=true;ui.keys.delete(negative);ui.keys.delete(positive);pointer=null;knob.style.transform='translate(0,0)';pad.setAttribute('aria-valuenow','0');flush();};
+ const steer=e=>{const r=pad.getBoundingClientRect(),value=horizontal?(e.clientX-r.left-r.width/2):(e.clientY-r.top-r.height/2),delta=Math.max(-1,Math.min(1,value/(horizontal?38:22))),direction=Math.abs(delta)<.15?0:Math.sign(delta);ui.keys.delete(negative);ui.keys.delete(positive);if(direction)ui.keys.add(direction<0?negative:positive);pad.setAttribute('aria-valuenow',String(direction));knob.style.transform=`translate(${horizontal?delta*28:0}px,${horizontal?0:delta*18}px)`;move(ui.keys);};
+ ui.on(pad,'pointerdown',e=>{if(ui.isPaused())return;e.preventDefault();pad.focus({preventScroll:true});pointer=e.pointerId;pad.setPointerCapture(pointer);steer(e);});ui.on(pad,'pointermove',e=>{if(pointer===e.pointerId)steer(e);});
+ for(const type of ['pointerup','pointercancel','lostpointercapture'])ui.on(pad,type,clear);ui.on(window,'blur',clear);ui.on(window,'keyup',e=>{if([negative,positive].includes(e.key)&&!ui.keys.has(negative)&&!ui.keys.has(positive)){pendingStop=true;flush();}});ui.whenPaused(clear);ui.dispose(clear);return {pad,flush};
+}

@@ -51,16 +51,16 @@ try{
    case'hex':await p.locator('.classic-hex polygon').first().click();break;
    case'slide':await p.locator('.classic-cell:not(:disabled)').first().click();break;
    case'nim':await p.locator('.classic-confirm').click();break;
-   case'billiards':await p.getByRole('button',{name:'击球 · 空格',exact:true}).click();break;
+   case'billiards':await p.getByRole('button',{name:'击球',exact:true}).click();break;
    case'badminton':await p.getByRole('button',{name:'击球',exact:true}).click();break;
-   case'tabletennis':await p.getByRole('button',{name:'回击 · 空格',exact:true}).click();break;
+   case'tabletennis':await p.getByRole('button',{name:'回击',exact:true}).click();break;
    case'archery':await p.getByRole('button',{name:'放箭 · 空格',exact:true}).click();break;
    case'penalty':await p.locator('.sports-zones button').first().click();break;
    case'checkers':{const b=await p.locator('canvas').boundingBox();for(const i of[17,35])await p.mouse.click(b.x+(59+i%8*46)/440*b.width,b.y+(59+(i>>3)*46)/440*b.height);break;}
   }
   await p.waitForFunction(()=>Number(document.querySelector('#game-root').dataset.eventCount)>0,{},{timeout:6000});
   const event=await p.locator('.match-cue').textContent();assert.ok(event);assert.ok((await p.locator('.match-guide-state').textContent()).length>0);
-  await p.locator('#pause-local').click();await p.waitForTimeout(80);
+  await p.locator('#game-menu').click();await p.waitForTimeout(80);
   const frozen=await p.evaluate(()=>({canvas:[...document.querySelectorAll('#game-root canvas')].map(c=>c.toDataURL()),moves:__DUIZUO__.getLocal().view.scores,animations:document.querySelector('#game-root').getAnimations({subtree:true}).filter(a=>a.playState==='running').length}));
   await p.waitForTimeout(160);assert.equal(await p.evaluate(()=>JSON.stringify([...document.querySelectorAll('#game-root canvas')].map(c=>c.toDataURL()))),JSON.stringify(frozen.canvas),id+' paused Canvas');assert.equal(frozen.animations,0,id+' paused DOM animations');
   await p.locator('#menu-continue').click();await p.waitForTimeout(350);

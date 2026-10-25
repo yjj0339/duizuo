@@ -1,7 +1,7 @@
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {modelCamera,modelPoint,pickSurface,screenPoint,solveArm,renderBudget,tableHeight} from './sports-space.js';
+import {modelCamera,modelPoint,pickSurface,screenPoint,solveArm,renderBudget,tableHeight,fitCourtCamera} from './sports-space.js';
 import {jumpLift,contact,shuttleLanding} from './racket-rules.js';
 const colors=['#e87966','#34a58d'],V=(x=0,y=0,z=0)=>new T.Vector3(x,y,z),up=V(0,1,0),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 
@@ -136,7 +136,7 @@ export function createSportsModel(canvas,id){
   ghost=A.sphere(scene,11,11,11,0,0,0,new T.MeshBasicMaterial({color:'#fff5c8',transparent:true,opacity:.23,depthWrite:false}));ghost.castShadow=false;
   const geo=A.geometry('guide',()=>new T.BufferGeometry().setAttribute('position',new T.BufferAttribute(new Float32Array(12),3)));guide=new T.LineSegments(geo,new T.LineBasicMaterial({color:'#fff3c3',transparent:true,opacity:.7}));scene.add(guide);
  }
- const resize=()=>{if(dead)return;const r=canvas.getBoundingClientRect(),b=renderBudget(r.width,quality==='smooth'?Math.min(devicePixelRatio,1.25):devicePixelRatio,r.height/r.width||460/720);renderer.setSize(b.width,b.height,false);camera.top=camera.right*b.height/b.width;camera.bottom=-camera.top;camera.updateProjectionMatrix();};const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
+ const resize=()=>{if(dead)return;const r=canvas.getBoundingClientRect(),b=renderBudget(r.width,quality==='smooth'?Math.min(devicePixelRatio,1.25):devicePixelRatio,r.height/r.width||460/720);renderer.setSize(b.width,b.height,false);const wide=r.width/r.height>1.6;fitCourtCamera(camera,id,r.width,r.height,wide&&id!=='billiards'?{top:30,bottom:36,left:120,right:165}:{top:38,bottom:110,left:7,right:7});};const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
  const onLost=e=>{e.preventDefault();lost=true;canvas.dataset.context='lost';},onRestore=()=>{lost=false;delete canvas.dataset.context;resize();};canvas.addEventListener('webglcontextlost',onLost);canvas.addEventListener('webglcontextrestored',onRestore);canvas.dataset.renderer='2.5d';
  function poolBall(b){const texture=A.texture(256,128,(c,w,h)=>{c.fillStyle=b.n>8?'#fff5df':b.color||'#fff5df';c.fillRect(0,0,w,h);if(b.n>8){c.fillStyle=b.color;c.fillRect(0,34,w,60);}if(b.n){for(const x of[64,192]){c.fillStyle='#fff5df';c.beginPath();c.arc(x,64,19,0,7);c.fill();c.fillStyle='#263536';c.textAlign='center';c.textBaseline='middle';c.font='bold 26px Arial';c.fillText(b.n,x,65);}}});const m=new T.MeshStandardMaterial({map:texture,roughness:.24,metalness:.04});const o=A.sphere(scene,11,11,11,0,0,0,m);o.userData.dispose=()=>m.dispose();o.userData.number=b.n;return o;}
  function updatePool(v,t,opts){

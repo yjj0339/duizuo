@@ -1208,6 +1208,7 @@ function mount(kind, root, send, context = {}) {
     }
     const identity = el('span', 'arcade-control-hint', kind === 'hockey' ? '直接拖动球拍更顺手' : kind === 'snake' ? '轻点方向，提前转弯' : kind === 'maze' ? '金旗 → 你的家' : kind === 'tanks' ? '触摸战场调整炮口' : '放完炸弹，快躲开'); aside.append(identity); controls.append(aside); shell.append(controls);
   }
+  const arena=el('div','arcade-arena');arena.style.setProperty('--arena-ratio',String(config.width/config.height));wrap.before(arena);arena.append(wrap);if(kind==='slingshot')arena.append(shell.querySelector('.arcade-shot-panel'));else arena.append(controls);
   const hint = el('p', 'arcade-hint game-note', config.hint); shell.append(hint); root.replaceChildren(shell);
   const aim = e => {
     if (!latest || latest.status !== 'playing') return;

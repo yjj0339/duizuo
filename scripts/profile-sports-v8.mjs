@@ -15,7 +15,7 @@ try{
   for(const id of ['badminton','tabletennis','billiards']){
    const state=engines[id].create(42,1000),saved={version:2,id,state,mode:id==='billiards'?'practice':'ai',level:'master',human:0,seed:42,now:1000,brain:{},ui:{}};
    await p.evaluate(({id,saved})=>__DUIZUO__.openLocal(id,{saved}),{id,saved});await p.locator('.sports-canvas').waitFor();await p.waitForTimeout(1800);
-   if(id==='billiards')await p.getByRole('button',{name:'击球 · 空格',exact:true}).click();
+   if(id==='billiards')await p.getByRole('button',{name:'击球',exact:true}).click();
    await p.evaluate(()=>Object.assign(__profile,{frames:[],cpu:[],last:0,enabled:true,modelStart:window.__SPORTS_MODEL_STATS__?.frames||0,startedAt:performance.now()}));
    const brain={},end=Date.now()+8000;
    while(Date.now()<end){if(bots[id]){const v=await p.evaluate(()=>__DUIZUO__.getLocal()?.view);if(v?.status==='playing'){const action=bots[id](v,0,brain,'master',v.now);if(action)await p.evaluate(a=>__DUIZUO__.send(a),action);}}await p.waitForTimeout(50);}

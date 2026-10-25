@@ -32,7 +32,7 @@ export function withExperience(id,mount){return(root,send,context)=>{
   return send(stampAction(id,view,a));
  };
  const renderer=mount(root,command,context);root.append(panel);root.classList.add('experience-game');
- const lab=mountLab(root,id,context);
+ const lab=mountLab(root,id,context),releaseLab=context.registerPanel?.("技巧与观察",lab.element);
  const nodes=selector=>[...root.querySelectorAll(selector)];
  function changedCells(before,after,selector,frames=pop){const list=nodes(selector);after?.forEach((n,i)=>{if(before?.[i]!==n)animate(list[i],frames,300,Math.min(i%9,5)*22);});}
  function ghost(node,frames){
@@ -83,5 +83,5 @@ export function withExperience(id,mount){return(root,send,context)=>{
   if(id==='nim'&&before&&!isPaused())before.piles.forEach((n,p)=>{if(n>v.piles[p]){const beans=nodes('.classic-tray')[p]?.querySelectorAll('.classic-bean');for(let i=v.piles[p];i<n;i++)ghost(beans?.[i],[{transform:'translateY(0) scale(1)',opacity:1},{transform:'translateY(-28px) scale(.35)',opacity:0}]);}});
   view=v;renderer.update(v);lab.update(v);const g=guide(id,v,context.player);goal.textContent=g.goal;state.textContent=g.state;panel.dataset.waiting=String(g.waiting);
   if(!isPaused()){motion(before,v);const event=actionEvent(id,before,v,context.player);if(event){announce(event.text,event.kind);if(['score','merge','lock','flip','place','take','light','reveal','flag','jump'].includes(event.kind))context.feedback?.(event.kind==='score'?'point':'tap');else if(event.kind==='error')context.feedback?.('error');}}
- },destroy(){dead=true;cancelAnimationFrame(frame);root.removeEventListener('keydown',repeat,true);for(const a of animations)a.cancel();for(const g of ghosts)g.remove();animations.clear();ghosts.clear();pausedAnimations.clear();lab.destroy();renderer.destroy();panel.remove();root.classList.remove('experience-game','motion-paused');delete root.dataset.lastEvent;delete root.dataset.eventCount;}};
+ },destroy(){dead=true;cancelAnimationFrame(frame);root.removeEventListener('keydown',repeat,true);for(const a of animations)a.cancel();for(const g of ghosts)g.remove();animations.clear();ghosts.clear();pausedAnimations.clear();releaseLab?.();lab.destroy();renderer.destroy();panel.remove();root.classList.remove('experience-game','motion-paused');delete root.dataset.lastEvent;delete root.dataset.eventCount;}};
 };}

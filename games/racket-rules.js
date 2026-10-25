@@ -50,6 +50,7 @@ function shotEvent(s,p,a,now,q){s.last=p;s.rally=true;s.rallyHits++;s.longestRal
 export const badminton={
  create(seed,now){const s=create('badminton',now);hydrate(s);return s;},
  action(s,p,a,now){if(!allowed(s,p,a,now))return false;hydrate(s);s.sport='badminton';const me=s.players[p];
+  if(a.type==='stop'){me.target=me.x;me.speed=0;return true;}
   if(a.type==='move'&&finite(a.x)&&a.x>=0&&a.x<=720){me.target=clamp(a.x,p?390:35,p?685:330);return true;}
   if(a.type==='dash'&&(a.direction===1||a.direction===-1)&&now>=me.dashReadyAt&&me.stamina>=35){me.stamina-=35;me.dashUntil=now+260;me.dashReadyAt=now+700;me.target=clamp(me.x+a.direction*135,p?390:35,p?685:330);return true;}
   if(a.type==='jump'){if(me.jump>now||now<(me.jumpReadyAt||0)||me.stamina<16)return false;me.jump=now+650;me.jumpReadyAt=now+850;me.stamina-=16;return true;}
@@ -75,7 +76,7 @@ export const badminton={
 };
 export const tabletennis={
  create(seed,now){const s=create('tabletennis',now);hydrate(s);return s;},
- action(s,p,a,now){if(!allowed(s,p,a,now))return false;hydrate(s);s.sport='tabletennis';if(a.type==='move'&&finite(a.y)&&a.y>=0&&a.y<=400){s.players[p].target=clamp(a.y,55,345);return true;}
+ action(s,p,a,now){if(!allowed(s,p,a,now))return false;hydrate(s);s.sport='tabletennis';if(a.type==='stop'){s.players[p].target=s.players[p].y;s.players[p].speed=0;return true;}if(a.type==='move'&&finite(a.y)&&a.y>=0&&a.y<=400){s.players[p].target=clamp(a.y,55,345);return true;}
   if(a.type!=='hit'||!['drive','lob','smash'].includes(a.style)||!finite(a.target)||a.target<0||a.target>1||a.spin!==undefined&&!['flat','top','back'].includes(a.spin))return false;
   const info=contact('tabletennis',s,p,now,a.style);if(!info.ready)return false;const serve=!s.rally;if(serve)serveBall(s);const b=s.ball;
   b.spin=serve?'flat':a.spin||'flat';b.gravity=b.spin==='top'?440:b.spin==='back'?340:380;
