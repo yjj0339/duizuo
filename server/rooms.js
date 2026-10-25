@@ -34,13 +34,17 @@ export class Rooms {
       if(typeof payload.token!=='string'||payload.token.length>100)return fail('会话已失效','SESSION');
       const s=this.tokens.get(payload.token);if(!s||!this.rooms.has(s.room.code))return fail('房间已关闭，请重新创建或加入','SESSION');
       const old=s.participant.conn;if(old===id)return this.identity(s);if(old)this.connections.delete(old);
-      this.leave(id);s.participant.conn=id;s.participant.connected=true;s.participant.active=true;s.participant.awaySince=null;s.participant.disconnectedAt=null;s.room.touchedAt=now;
+      this.leave(id);s.participant.conn=id;s.participant.connected=true;s.participant.active=true;s.participant.presenceSeq=0;s.participant.awaySince=null;s.participant.disconnectedAt=null;s.room.touchedAt=now;
       this.connections.set(id,s);this.presence(s.room,now);return this.identity(s);
     }
     const s=this.connections.get(id);if(!s)return fail('请先创建或加入房间','SESSION');
     const {room,participant:p,slot}=s;room.touchedAt=now;
     if(event==='leave'){this.leave(id);return {ok:true};}
     if(event==='presence'){
+      // Beacon and socket/HTTPS requests can arrive out of order on one connection.
+      if(payload.seq!==undefined&&(!Number.isSafeInteger(payload.seq)||payload.seq<1))return fail('在线状态序号无效');
+      if(payload.seq!==undefined){if(payload.seq<=(p.presenceSeq||0))return {ok:true,stale:true};p.presenceSeq=payload.seq;}
+      else if(p.presenceSeq)return {ok:true,stale:true};
       p.active=payload.active!==false;if(p.active)p.awaySince=null;else p.awaySince??=now;
       this.presence(room,now);return {ok:true};
     }

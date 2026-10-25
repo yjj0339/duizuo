@@ -2,7 +2,7 @@ import {io} from 'socket.io-client';
 const storage={get(key){try{return JSON.parse(localStorage.getItem(key));}catch{return null;}},set(key,value){try{value?localStorage.setItem(key,JSON.stringify(value)):localStorage.removeItem(key);}catch{}}};
 export class Connection{
  constructor(url,{snapshot,identity,state,reset,room='',mode='auto',isActive=()=>!document.hidden,allowResumeFrom=''}={}){
-  this.isActive=isActive;
+  this.isActive=isActive;this.presenceSeq=0;
   this.url=url;this.callbacks={snapshot,identity,state,reset};this.mode=mode;this.alive=true;this.connected=false;this.ready=false;this.http=false;this.token=null;this.revision=0;
   let saved=storage.get('duo:session-v2');if(!saved){try{saved=JSON.parse(sessionStorage.getItem('duo:session'));}catch{}}
   if(saved?.token&&(!room||saved.code===room)&&(saved.server===url||saved.server===allowResumeFrom||!room))this.saved=saved;
@@ -46,10 +46,11 @@ export class Connection{
  }
  presence(active){
   if(!this.alive||this.replaced)return Promise.resolve();const token=this.token||this.saved?.token;if(!token)return Promise.resolve();
-  if(!active){const data=JSON.stringify({token,active:false,channelId:this.http?this.channelId:this.socket?.id});try{if(navigator.sendBeacon?.(this.url+'/api/presence',new Blob([data],{type:'text/plain'})))return Promise.resolve();}catch{}
+  const seq=this.presenceSeq=(this.presenceSeq||0)+1;
+  if(!active){const data=JSON.stringify({token,active:false,seq,channelId:this.http?this.channelId:this.socket?.id});try{if(navigator.sendBeacon?.(this.url+'/api/presence',new Blob([data],{type:'text/plain'})))return Promise.resolve();}catch{}
    return fetch(this.url+'/api/presence',{method:'POST',body:data,keepalive:true}).catch(()=>{});
   }
-  return this.request('presence',{active:true});
+  return this.request('presence',{active:true,seq});
  }
  async recover(){if(!this.alive||this.replaced)return;if(this.http){if(!this.connected)this.connected=true;await this.restore();this.poll();}else if(!this.socket.connected)this.socket.connect();else await this.restore();}
  close(){this.alive=false;clearTimeout(this.fallback);this.socket?.removeAllListeners();this.socket?.disconnect();}

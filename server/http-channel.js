@@ -20,7 +20,7 @@ export function httpChannel(rooms,changed,replaced=()=>{}){
    if(name==='/api/presence'&&req.method==='POST'){
     const b=await body(req),s=session(b.token||tokenFor(req));if(!s?.participant.conn){json(res,{ok:false,code:'SESSION'},401);return true;}
     if(b.channelId&&b.channelId!==s.participant.conn){json(res,{ok:false,code:'REPLACED'},409);return true;}
-    const result=rooms.handle('presence',s.participant.conn,{active:b.active});changed();json(res,result);return true;
+    const result=rooms.handle('presence',s.participant.conn,{active:b.active,seq:b.seq});changed();json(res,result);return true;
    }
    const s=session(tokenFor(req)),id=s?.participant.conn;
    if(!id?.startsWith('http:')||!rooms.connections.has(id)||req.headers['x-duo-connection']&&req.headers['x-duo-connection']!==id){json(res,{ok:false,code:s?'REPLACED':'SESSION',message:'此对局已在另一个页面恢复'},401);return true;}
