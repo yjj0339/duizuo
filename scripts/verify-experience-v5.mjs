@@ -52,7 +52,7 @@ try{
    case'slide':await p.locator('.classic-cell:not(:disabled)').first().click();break;
    case'nim':await p.locator('.classic-confirm').click();break;
    case'billiards':await p.getByRole('button',{name:'击球 · 空格',exact:true}).click();break;
-   case'badminton':await p.getByRole('button',{name:'高远球 1',exact:true}).click();break;
+   case'badminton':await p.getByRole('button',{name:'击球',exact:true}).click();break;
    case'tabletennis':await p.getByRole('button',{name:'回击 · 空格',exact:true}).click();break;
    case'archery':await p.getByRole('button',{name:'放箭 · 空格',exact:true}).click();break;
    case'penalty':await p.locator('.sports-zones button').first().click();break;

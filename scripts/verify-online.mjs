@@ -22,7 +22,7 @@ try{
  await b.locator('#room-code').fill(code);await b.locator('#join-form button').click();await b.waitForFunction(()=>window.__DUIZUO__.getSnapshot()?.room.players.every(Boolean));
  const ids=process.env.GAME_IDS?process.env.GAME_IDS.split(','):await a.evaluate(()=>window.__DUIZUO__.catalog.map(g=>g.id));
  for(const id of ids){
-  console.log('Checking '+id);
+  console.log('Checking '+id);await b.setViewportSize(['badminton','tabletennis','billiards'].includes(id)?{width:844,height:390}:{width:390,height:844});
   await a.locator(`[data-game="${id}"]`).click();await a.getByRole('tab',{name:/联机/}).click();await a.locator('#mode-start').click();
   await a.waitForFunction(id=>{const s=window.__DUIZUO__.getSnapshot();return s?.room.gameId===id&&s.room.phase==='waiting';},id);
   await b.waitForFunction(id=>window.__DUIZUO__.getSnapshot()?.room.gameId===id,id);

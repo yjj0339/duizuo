@@ -1,4 +1,5 @@
 import {stage} from './sports-stage.js';
+import {dimensionRenderer} from './dimension-loader.js';
 import {renderBadminton as detailedBadminton,renderPing as detailedPing} from './racket-views.js';
 import {palette,clamp,mix,round,circle,ellipse,line,poly,text,gradient,radial,shadow,grain,racket,athlete,poolBall,shuttle,stadium,net} from './sports-art.js';
 import {jumpHeight,hitAvailable} from './sports-motion.js';
@@ -57,4 +58,4 @@ function renderCheckers(root,send,context){
  ui.events((v,old)=>{ui.state(v.turn===ui.player?'轮到你了':'对方回合');ui.hint(v.chain!==null?'继续跳吃：同一枚棋子还有下一步':v.legal.some(m=>m.capture!==null)?'这回合可以吃子，必须选择跳吃':'选中棋子，亮点就是可走的位置',v.turn===ui.player);if(old){const src=old.board.findIndex((n,i)=>n&&v.board[i]===0&&Math.sign(n)===(old.turn?-1:1)),dst=v.board.findIndex((n,i)=>n&&!old.board[i]);if(src>=0&&dst>=0){motion={from:center(src),to:center(dst),index:dst,value:v.board[dst],at:ui.time};ui.sound(v.scores.some((n,i)=>n>old.scores[i])?'pocket':'ball');if(v.chain!==null)from=v.chain;}}});
  ui.animate((v,t)=>{for(let i=0;i<64;i++){const p=center(i);if(v.legal.some(m=>m.from===from&&m.to===i)){circle(c,p.x,p.y,10,'#f4e6a4b0');circle(c,p.x,p.y,16,null,'#fff5be');}if(i===from||i===cursor)round(c,p.x-20,p.y-20,40,40,8,null,'#fff9de');if(v.board[i]&&!(motion&&motion.index===i&&t-motion.at<240))piece(v.board[i],p.x,p.y);}if(motion&&t-motion.at<240){const f=clamp((t-motion.at)/240,0,1),ease=1-(1-f)**3;piece(motion.value,mix(motion.from.x,motion.to.x,ease),mix(motion.from.y,motion.to.y,ease)-Math.sin(f*Math.PI)*13);}});return{update:ui.update,destroy:ui.destroy};
 }
-export const renderers={billiards:renderPool,badminton:detailedBadminton,tabletennis:detailedPing,archery:renderArchery,penalty:renderPenalty,checkers:renderCheckers};
+export const renderers={billiards:dimensionRenderer('billiards',renderPool),badminton:dimensionRenderer('badminton',detailedBadminton),tabletennis:dimensionRenderer('tabletennis',detailedPing),archery:renderArchery,penalty:renderPenalty,checkers:renderCheckers};

@@ -1,6 +1,6 @@
 {
   "name": "duizuo",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "private": true,
   "type": "module",
   "description": "对座 DUIZUO · 32 款面对面的小游戏，一个本地权威的多人对战服务",
@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "socket.io": "4.8.4",
-    "socket.io-client": "4.8.4"
+    "socket.io-client": "4.8.4",
+    "three": "0.186.1"
   },
   "devDependencies": {
     "vite": "8.3.5"

@@ -7,6 +7,7 @@ import {Server} from 'socket.io';
 import {Rooms} from './rooms.js';
 import {engines} from '../shared/engines.js';
 import {catalog} from '../shared/catalog.js';
+import {release} from '../shared/release.js';
 import {httpChannel} from './http-channel.js';
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
 const mime={'.wasm':'application/wasm','.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.woff2':'font/woff2'};
@@ -22,7 +23,7 @@ export async function createApp({dataDir=path.join(ROOT,'runtime','data'),persis
     let name;try{name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);}catch{res.writeHead(400);res.end();return;}
     if(await channel.handle(req,res,name))return;
     if(req.method!=='GET'&&req.method!=='HEAD'){res.writeHead(405);res.end();return;}
-    if(name==='/health'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({ok:true,name:'DUIZUO',version:'3.2.0',revision:'gameplay-v7',games:catalog.length,rooms:rooms.rooms.size,transports:['socket.io','https-long-poll'],graceMs:180000,checkpoint:!!db,now:Date.now()}));return;}
+    if(name==='/health'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({ok:true,name:'DUIZUO',version:release.version,revision:release.id,games:catalog.length,rooms:rooms.rooms.size,transports:['socket.io','https-long-poll'],graceMs:180000,checkpoint:!!db,now:Date.now()}));return;}
     const base=path.join(ROOT,'dist');const file=path.resolve(base,'.'+(name==='/'?'/index.html':name));
     if(file!==base&&!file.startsWith(base+path.sep)){res.writeHead(403);res.end();return;}
     try{if(!(await stat(file)).isFile())throw new Error();const body=await readFile(file);res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':name.endsWith('.html')||name.endsWith('.json')?'no-store':'public, max-age=3600'});res.end(req.method==='HEAD'?undefined:body);}
