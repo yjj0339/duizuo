@@ -8,7 +8,7 @@ await p.addInitScript(()=>{window.__orientationAttempts=0;Element.prototype.requ
 const pass=s=>{checks.push(s);console.log('PASS '+s);};
 async function open(id){const saved={version:2,id,state:engines[id].create(42,1000),mode:'practice',level:'master',human:0,seed:42,now:1000,brain:{},ui:{seat:0}};await p.evaluate(({id,saved})=>__DUIZUO__.openLocal(id,{saved}),{id,saved});if(['badminton','tabletennis','billiards'].includes(id))await p.waitForFunction(()=>window.__SPORTS_MODEL_STATS__?.frames>2);}
 try{
- await p.goto(base,{waitUntil:'networkidle'});await p.waitForFunction(()=>window.__DUIZUO__);await open('badminton');
+ await p.goto(base,{waitUntil:'domcontentloaded',timeout:60000});await p.waitForFunction(()=>window.__DUIZUO__,null,{timeout:60000});await open('badminton');
  for(const [w,h,l,r,b]of[[390,844,0,0,34],[844,390,44,0,21],[844,390,0,44,21],[568,320,44,0,21],[320,568,0,0,20]]){
   await p.setViewportSize({width:w,height:h});await p.evaluate(({l,r,b})=>{for(const [name,value]of[['left',l],['right',r],['bottom',b]])document.documentElement.style.setProperty('--safe-'+name,value+'px');window.scrollTo(0,0);},{l,r,b});await p.waitForTimeout(140);
   assert.equal(await p.evaluate(()=>__DUIZUO__.getLocal().paused),false);assert.equal(await p.evaluate(()=>__orientationAttempts),0);
